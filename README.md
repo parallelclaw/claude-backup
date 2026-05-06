@@ -2,6 +2,8 @@
 
 > Export your Claude Code sessions, memory, and credentials to local Markdown files — so you keep your work even if Anthropic suspends your account.
 
+[Русский](README.ru.md) · English
+
 ---
 
 ## Why

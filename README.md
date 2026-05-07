@@ -33,67 +33,160 @@ Users who paid through non-standard channels or used VPNs were hit hardest. Appe
 
 ---
 
-## What it does
+## Quick Start
 
-- Scans `~/.claude/sessions/` and exports every conversation to a dated `.md` file
-- Extracts project-specific memory and instructions into `memory/` format
-- Backs up credentials metadata (not secrets — pointers and config)
-- Optionally encrypts exports with `gpg` before writing to disk
-- Runs on cron: daily automated backups you forget about
+```bash
+git clone https://github.com/parallelclaw/claude-backup.git
+cd claude-backup
+pip install -e .
+```
+
+```bash
+# See what you have
+claude-backup list
+
+# Export one session
+claude-backup export abc-123 --output ~/claude-backups/
+
+# Export everything
+claude-backup export-all --output ~/claude-backups/
+```
+
+New users: see [QUICKSTART.md](./QUICKSTART.md) for the full step-by-step guide (macOS, Linux, Windows/WSL).
 
 ---
 
 ## Install
 
+Requires **Python 3.10+** (CI tests 3.10, 3.11, 3.12).
+
 ```bash
-pip install claude-backup
+pip install -e .
 ```
 
-Or clone and run directly:
+> **Note:** If you only have Python 3.9, you can install with `pip install -e . --ignore-requires-python`. The code uses `from __future__ import annotations` and works on 3.9, but official support is 3.10+.
+
+---
+
+## Usage
+
+### List sessions
 
 ```bash
-git clone https://github.com/parallelclaw/claude-backup.git
-cd claude-backup
-python -m claude_backup --help
+claude-backup list
+```
+
+Prints a table:
+
+```
+Project    Session ID              First Prompt         Msg Count  Created              Git Branch
+─────────  ──────────────────────  ───────────────────  ─────────  ───────────────────  ──────────
+my-webapp  abc-123                 fix auth bug         42         2026-05-07T10:42:00Z main
+my-webapp  def-456                 add unicode support  18         2026-05-06T14:00:00Z feature/unicode
+```
+
+### Export a single session
+
+```bash
+claude-backup export abc-123 --output ./backups/
+```
+
+Writes `./backups/2026-05-07--abc-123.md`.
+
+### Export everything
+
+```bash
+claude-backup export-all --output ./backups/
+```
+
+Each project gets its own subdirectory under `--output`.
+
+### Custom Claude root
+
+Override the default `~/.claude/projects/` location:
+
+```bash
+claude-backup --claude-home /path/to/projects list
 ```
 
 ---
 
-## Quick Start
+## Output format
 
-```bash
-# One-time export
-claude-backup export ~/claude-backups/
+Each session is written as Markdown with YAML frontmatter:
 
-# With encryption
-claude-backup export ~/claude-backups/ --encrypt --gpg-key your@email.com
+```markdown
+---
+project: my-webapp
+session_id: abc-123
+branch: main
+model: claude-sonnet-4
+messages: 42
+exported_at: 2026-05-07T15:30:00Z
+---
 
-# Set up daily cron
-claude-backup cron --daily ~/claude-backups/
+# my-webapp / main / abc-123
+
+## User (10:42:46)
+fix auth bug
+
+## Assistant (10:42:50)
+Here's the fix...
 ```
 
 ---
 
-## What's exported
+## Behaviour
 
-| Source | Destination | Content |
-|--------|-------------|---------|
-| `~/.claude/sessions/` | `YYYY-MM-DD/session-{id}.md` | Full conversation history |
-| `~/.claude/.credentials.json` | `credentials-meta.json` | Account pointers (not keys) |
-| `~/.claude/settings.json` | `settings-backup.json` | Custom instructions & preferences |
-| `~/.claude/memory/` | `memory/` | Long-term project context |
+- **Graceful degradation** — empty or corrupted `.jsonl` files are skipped with a warning. The tool never crashes on bad data.
+- **Orphan sessions** — sessions discovered via `.jsonl` files but missing from `sessions-index.json` are still exported (with minimal metadata).
+- **Ghost index entries** — sessions in the index without an on-disk `.jsonl` file are listed but cannot be exported.
+- **Missing `~/.claude/`** exits with code 1 and a clear error message.
+- **Unicode-ready** — correctly handles Russian, emoji, and special characters.
+- **Tool-aware** — preserves `tool_use` / `tool_result` blocks in readable Markdown.
+
+---
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+pytest -v --cov=claude_backup
+```
+
+CI runs on Python 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
+
+**Test coverage: 93%** (42/42 tests passing).
+
+### Project layout
+
+```
+claude_backup/
+├── __init__.py
+├── cli.py          # Click entry point
+├── scanner.py      # Discovers projects + sessions
+├── parser.py       # Reads .jsonl files
+└── exporter.py     # Renders Markdown
+
+tests/
+├── fixtures/       # Fake project data — no real ~/.claude/ data is read in tests
+├── test_scanner.py
+├── test_parser.py
+├── test_exporter.py
+└── test_cli.py
+```
 
 ---
 
 ## OpenClaw users
 
-Exports are compatible with OpenClaw's `memory/` format. Drop `claude-backup/memory/` into your `~/.openclaw/workspace/memory/` directory and your new agent retains project context.
+Exports are compatible with OpenClaw's `memory/` format. Drop exported `.md` files into your `~/.openclaw/workspace/memory/` directory and your new agent retains project context.
 
 ---
 
 ## Warning
 
-This tool reads your Claude Code data directory. It does **not** send anything to external servers. Everything stays local. If you use `--encrypt`, even your disk backups are protected.
+This tool reads your Claude Code data directory. It does **not** send anything to external servers. Everything stays local.
 
 ---
 

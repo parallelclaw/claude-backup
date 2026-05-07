@@ -6,8 +6,8 @@
 
 ## 1. Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) installed and used at least once (so `~/.claude/` exists)
-- Python **3.10+**
+- **Claude Code** installed and used at least once (so `~/.claude/` exists)
+- **Python 3.10+**
 - `pip` or `uv`
 
 Check Python version:
@@ -15,6 +15,8 @@ Check Python version:
 python3 --version   # macOS / Linux
 python --version    # Windows
 ```
+
+> **Note:** If you only have Python 3.9, you can install with `pip install -e . --ignore-requires-python`. The code uses `from __future__ import annotations` and works on 3.9, but official support and CI target 3.10+.
 
 ---
 
@@ -113,7 +115,18 @@ Result:
 
 ---
 
-## 7. (Optional) Daily auto-backup
+## 7. (Optional) Custom Claude home directory
+
+If Claude Code uses a non-standard data path:
+
+```bash
+claude-backup --claude-home /path/to/custom/.claude list
+claude-backup --claude-home /path/to/custom/.claude export abc-123 --output ~/backups/
+```
+
+---
+
+## 8. (Optional) Daily auto-backup
 
 Add to your shell profile (`~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`):
 
@@ -141,7 +154,7 @@ crontab -e
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
@@ -149,13 +162,15 @@ crontab -e
 | `Session not found` | Wrong session ID | Run `claude-backup list` and copy full ID |
 | `Permission denied` | Installed with `sudo` | Use `pip install --user` or virtualenv |
 | Empty `.md` files | Session was cleared / never had messages | Check `claude-backup list` for `messageCount` |
-| Windows: command not found | Native CMD/PowerShell | Use **WSL2** (Ubuntu) — `claude-backup` is not tested on native Windows |
+| Corrupt JSONL warning | Some `.jsonl` lines are malformed | Normal — tool skips bad lines and continues |
+| Windows: command not found | Native CMD/PowerShell | Use **WSL2** (Ubuntu) — native Windows not tested |
+| Python version error | Running Python 3.9 | Use `pip install -e . --ignore-requires-python` or upgrade to 3.10+ |
 
 ---
 
 ## Next Steps
 
-- Read the full [README.md](./README.md) for advanced features (`--format`, `--encrypt`, `--since`)
+- Read the full [README.md](./README.md) for behaviour details, development setup, and output format
 - See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) if you want to hack on the code
 - Open an [Issue](https://github.com/parallelclaw/claude-backup/issues) if something breaks
 

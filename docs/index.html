@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Don't let Anthropic delete your AI memory. Backup Claude Code + Cowork sessions to local Markdown. One paste — install via AI. Account-rescue bundle for ChatGPT, Cursor, anything.">
+<title>claude-backup — keep your Claude work, even after a ban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f0ea;
+    --bg-card: #fffefb;
+    --bg-code: #2b2a26;
+    --text: #1a1a1a;
+    --text-soft: #5d5a52;
+    --text-code: #f5e9d4;
+    --accent: #c87b4a;
+    --accent-dark: #a85e2e;
+    --border: #e8e0d0;
+    --shadow: 0 1px 3px rgba(40, 30, 20, 0.06), 0 8px 24px rgba(40, 30, 20, 0.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre, kbd { font-family: 'JetBrains Mono', 'SF Mono', Menlo, monospace; }
+  a { color: var(--accent-dark); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---- Top nav ---- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(244, 240, 234, 0.92);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .logo { font-weight: 800; font-size: 17px; letter-spacing: -0.02em; }
+  .logo span { color: var(--accent); }
+  .nav-links { display: flex; align-items: center; gap: 8px; }
+  .lang-toggle {
+    display: inline-flex; align-items: center;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 999px;
+    overflow: hidden;
+  }
+  .lang-toggle button {
+    background: none; border: none; padding: 6px 12px;
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    color: var(--text-soft);
+  }
+  .lang-toggle button.active { background: var(--accent); color: white; }
+  .gh-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 999px;
+    background: var(--text); color: var(--bg-card);
+    font-weight: 600; font-size: 13px;
+    transition: background 0.15s;
+  }
+  .gh-btn:hover { text-decoration: none; background: var(--accent-dark); }
+
+  /* ---- Hero ---- */
+  .hero {
+    padding: 80px 24px 56px;
+    background: linear-gradient(180deg, #f4f0ea 0%, #ede5d3 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-inner { max-width: 880px; margin: 0 auto; text-align: center; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 999px;
+    background: rgba(200, 123, 74, 0.12); color: var(--accent-dark);
+    font-size: 13px; font-weight: 600; letter-spacing: 0.01em;
+    margin-bottom: 22px;
+  }
+  h1 {
+    font-size: clamp(34px, 5.8vw, 56px);
+    font-weight: 800; letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 22px;
+  }
+  h1 .accent { color: var(--accent-dark); }
+  .lede {
+    font-size: clamp(17px, 2vw, 21px);
+    color: var(--text-soft);
+    max-width: 720px; margin: 0 auto 36px;
+    line-height: 1.5;
+  }
+  .cta-row {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .cta-primary, .cta-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 24px; border-radius: 12px;
+    font-weight: 700; font-size: 15px; letter-spacing: -0.005em;
+    border: 1.5px solid transparent; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    font-family: inherit;
+  }
+  .cta-primary {
+    background: var(--accent); color: white;
+    box-shadow: var(--shadow);
+  }
+  .cta-primary:hover {
+    background: var(--accent-dark); transform: translateY(-1px);
+    text-decoration: none;
+  }
+  .cta-secondary {
+    background: var(--bg-card); color: var(--text);
+    border-color: var(--border);
+  }
+  .cta-secondary:hover { border-color: var(--accent); text-decoration: none; }
+  .cta-meta { font-size: 13px; color: var(--text-soft); }
+
+  /* ---- Lazy path 3 steps ---- */
+  .lazy {
+    padding: 72px 24px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title {
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 800; letter-spacing: -0.02em;
+    text-align: center; margin-bottom: 12px;
+  }
+  .section-sub {
+    text-align: center; color: var(--text-soft);
+    max-width: 600px; margin: 0 auto 48px;
+  }
+  .steps {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+  }
+  .step {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 26px;
+    position: relative;
+  }
+  .step-num {
+    position: absolute; top: -16px; left: 24px;
+    width: 36px; height: 36px; border-radius: 999px;
+    background: var(--accent); color: white;
+    font-weight: 800; font-size: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .step h3 {
+    font-size: 18px; font-weight: 700; margin: 8px 0 10px;
+    letter-spacing: -0.01em;
+  }
+  .step p {
+    font-size: 14.5px; color: var(--text-soft); line-height: 1.55;
+  }
+  .step .pic {
+    font-size: 32px; display: inline-block; margin-bottom: 4px;
+  }
+  @media (max-width: 720px) {
+    .steps { grid-template-columns: 1fr; }
+  }
+
+  /* ---- Features grid ---- */
+  .features {
+    padding: 72px 24px;
+    background: var(--bg);
+  }
+  .feat-grid {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+  }
+  .feat {
+    background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px 22px;
+  }
+  .feat-icon { font-size: 26px; margin-bottom: 12px; }
+  .feat h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .feat p { font-size: 14.5px; color: var(--text-soft); line-height: 1.5; }
+
+  /* ---- Rescue banner ---- */
+  .rescue {
+    padding: 72px 24px;
+    background: linear-gradient(135deg, #2b2a26 0%, #423b30 100%);
+    color: var(--bg-card);
+  }
+  .rescue-inner { max-width: 880px; margin: 0 auto; text-align: center; }
+  .rescue h2 {
+    font-size: clamp(26px, 3.4vw, 38px);
+    font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 24px;
+  }
+  .rescue h2 em {
+    color: var(--accent); font-style: normal;
+    background: rgba(200, 123, 74, 0.18);
+    padding: 2px 8px; border-radius: 6px;
+  }
+  .rescue p {
+    font-size: 17px; line-height: 1.55;
+    color: rgba(255, 255, 255, 0.78);
+    max-width: 640px; margin: 0 auto 16px;
+  }
+  .rescue p strong { color: var(--accent); }
+  .rescue .small { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 24px; }
+
+  /* ---- Commands strip ---- */
+  .commands {
+    padding: 72px 24px;
+    background: var(--bg-card);
+  }
+  .cmd-list {
+    max-width: 760px; margin: 0 auto;
+    background: var(--bg-code); color: var(--text-code);
+    border-radius: 16px; padding: 26px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14.5px; line-height: 1.9;
+    overflow-x: auto;
+  }
+  .cmd-list .prompt-mark { color: var(--accent); user-select: none; }
+  .cmd-list .comment { color: #8a857a; }
+
+  /* ---- FAQ ---- */
+  .faq {
+    padding: 72px 24px 32px;
+    background: var(--bg);
+  }
+  .faq-list { max-width: 760px; margin: 0 auto; }
+  details {
+    background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 22px; margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+  details[open] { border-color: var(--accent); }
+  summary {
+    font-weight: 700; font-size: 16px;
+    cursor: pointer; list-style: none;
+    display: flex; justify-content: space-between; align-items: center;
+    letter-spacing: -0.01em;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after {
+    content: '+'; font-weight: 400; font-size: 22px; color: var(--accent);
+    transition: transform 0.2s;
+  }
+  details[open] summary::after { transform: rotate(45deg); }
+  .faq-body {
+    margin-top: 12px; font-size: 15px;
+    color: var(--text-soft); line-height: 1.6;
+  }
+
+  /* ---- Footer ---- */
+  footer {
+    padding: 40px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    text-align: center; font-size: 14px; color: var(--text-soft);
+  }
+  footer a { color: var(--accent-dark); margin: 0 10px; }
+
+  /* ---- Copy-prompt feedback ---- */
+  .copy-feedback {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(120%);
+    background: var(--text); color: var(--bg);
+    padding: 12px 20px; border-radius: 999px;
+    font-weight: 600; font-size: 14px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+    transition: transform 0.3s ease;
+    z-index: 100;
+  }
+  .copy-feedback.shown { transform: translateX(-50%) translateY(0); }
+
+  /* Hidden by default */
+  [data-ru], [data-en] { /* visibility controlled by JS */ }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo">claude-<span>backup</span></div>
+    <div class="nav-links">
+      <div class="lang-toggle" role="tablist">
+        <button class="active" data-lang="en" onclick="setLang('en')">EN</button>
+        <button data-lang="ru" onclick="setLang('ru')">RU</button>
+      </div>
+      <a class="gh-btn" href="https://github.com/parallelclaw/claude-backup" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span data-en="GitHub" data-ru="GitHub">GitHub</span>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================ HERO ============================================ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="pill">
+      <span data-en="🆘 Account-rescue tool" data-ru="🆘 Спасение для забаненных">🆘 Account-rescue tool</span>
+    </div>
+    <h1>
+      <span data-en="Don't let Anthropic" data-ru="Не дайте Anthropic">Don't let Anthropic</span><br>
+      <span class="accent" data-en="delete your AI memory." data-ru="стереть вашу AI-память.">delete your AI memory.</span>
+    </h1>
+    <p class="lede" data-en="Every conversation you've had with Claude — Code, Cowork, every project — sits on Anthropic's mercy. Random bans happen. claude-backup keeps a local copy on your disk and lets you hand the lot to ChatGPT, Cursor, or any other AI agent — in one command — when you need a Plan B."
+       data-ru="Каждый ваш разговор с Claude — Code, Cowork, любой проект — у Anthropic в заложниках. Рандомные баны случаются регулярно. claude-backup хранит локальную копию у вас на диске и одной командой передаёт всё ChatGPT, Cursor или любому другому AI-агенту — на случай, когда нужен план Б.">
+       Every conversation you've had with Claude — Code, Cowork, every project — sits on Anthropic's mercy. Random bans happen. claude-backup keeps a local copy on your disk and lets you hand the lot to ChatGPT, Cursor, or any other AI agent — in one command — when you need a Plan B.
+    </p>
+    <div class="cta-row">
+      <button class="cta-primary" onclick="copyInstallPrompt()">
+        <span>📋</span>
+        <span data-en="Copy 1-paste install" data-ru="Скопировать 1-paste установку">Copy 1-paste install</span>
+      </button>
+      <a class="cta-secondary" href="https://github.com/parallelclaw/claude-backup" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span data-en="View on GitHub" data-ru="Открыть на GitHub">View on GitHub</span>
+      </a>
+    </div>
+    <p class="cta-meta" data-en="Free • MIT license • Works on macOS, Linux, Windows (WSL)"
+       data-ru="Бесплатно • MIT license • macOS, Linux, Windows (WSL)">
+       Free • MIT license • Works on macOS, Linux, Windows (WSL)
+    </p>
+  </div>
+</section>
+
+<!-- ============================================ LAZY 3 STEPS ============================================ -->
+<section class="lazy" id="install">
+  <h2 class="section-title" data-en="Install in 3 steps. No terminal needed."
+                            data-ru="Установка в 3 шага. Терминал не нужен.">Install in 3 steps. No terminal needed.</h2>
+  <p class="section-sub" data-en="You don't have to read any documentation. Paste the prompt into Claude (or ChatGPT, or Cursor) and the AI walks you through everything."
+                          data-ru="Никакую документацию читать не надо. Вставляешь промпт в Claude (или ChatGPT, или Cursor) — и AI сам проводит тебя по всем шагам.">
+    You don't have to read any documentation. Paste the prompt into Claude (or ChatGPT, or Cursor) and the AI walks you through everything.
+  </p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="pic">📋</div>
+      <h3 data-en="Copy the install prompt"
+          data-ru="Скопируйте промпт">Copy the install prompt</h3>
+      <p data-en="Click the big orange button above. The whole install instruction (a few hundred words) goes to your clipboard."
+         data-ru="Нажмите большую оранжевую кнопку выше. Вся инструкция установки (несколько сотен слов) скопируется в буфер обмена.">
+        Click the big orange button above. The whole install instruction (a few hundred words) goes to your clipboard.
+      </p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="pic">💬</div>
+      <h3 data-en="Paste into any AI chat"
+          data-ru="Вставьте в любой AI-чат">Paste into any AI chat</h3>
+      <p data-en="Open Claude.ai, ChatGPT, Cursor, or your existing Claude Code window. Paste, hit send. The AI starts walking you through it."
+         data-ru="Откройте Claude.ai, ChatGPT, Cursor или существующее окно Claude Code. Вставьте, отправьте. AI начнёт вести вас по шагам.">
+        Open Claude.ai, ChatGPT, Cursor, or your existing Claude Code window. Paste, hit send. The AI starts walking you through it.
+      </p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="pic">✅</div>
+      <h3 data-en="Follow what it tells you"
+          data-ru="Делайте что говорит">Follow what it tells you</h3>
+      <p data-en="The AI checks your Python, clones the repo, installs claude-backup, and runs your first backup. ~5 minutes total. You end up with all your conversations as readable Markdown files."
+         data-ru="AI проверит Python, склонирует репозиторий, установит claude-backup и сделает ваш первый бэкап. ~5 минут. На выходе — все ваши разговоры в виде читаемых Markdown-файлов.">
+        The AI checks your Python, clones the repo, installs claude-backup, and runs your first backup. ~5 minutes total. You end up with all your conversations as readable Markdown files.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ FEATURES ============================================ -->
+<section class="features">
+  <h2 class="section-title" data-en="What it actually does"
+                            data-ru="Что она реально делает">What it actually does</h2>
+  <p class="section-sub" data-en="Four things, one tool. All offline, nothing sent anywhere."
+                          data-ru="Четыре вещи, один инструмент. Полностью локально, ничего никуда не отправляется.">
+    Four things, one tool. All offline, nothing sent anywhere.
+  </p>
+  <div class="feat-grid">
+    <div class="feat">
+      <div class="feat-icon">💾</div>
+      <h3 data-en="Local backup" data-ru="Локальный бэкап">Local backup</h3>
+      <p data-en="Both Claude Code AND Claude Cowork sessions, exported to clean Markdown. Open in Obsidian, search with grep, archive in git."
+         data-ru="И Claude Code, и Claude Cowork — экспортируются в чистый Markdown. Открывайте в Obsidian, ищите через grep, архивируйте в git.">
+        Both Claude Code AND Claude Cowork sessions, exported to clean Markdown. Open in Obsidian, search with grep, archive in git.
+      </p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔀</div>
+      <h3 data-en="Handoff to any AI" data-ru="Handoff в любого AI">Handoff to any AI</h3>
+      <p data-en="One command produces a paste-ready prompt for ChatGPT, Cursor, Claude.ai web — any chat agent. Continue your conversation there with full context."
+         data-ru="Одна команда — paste-ready промпт для ChatGPT, Cursor, Claude.ai web — любого чат-агента. Продолжайте разговор там с полным контекстом.">
+        One command produces a paste-ready prompt for ChatGPT, Cursor, Claude.ai web — any chat agent. Continue your conversation there with full context.
+      </p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🆘</div>
+      <h3 data-en="Account-rescue bundle" data-ru="Rescue-пакет">Account-rescue bundle</h3>
+      <p data-en="Banned by Anthropic? Run claude-backup rescue. You get a portable folder with every session and a master meta-prompt for the new agent. Working again in 10 minutes."
+         data-ru="Забанили? Запустите claude-backup rescue. Получите портативную папку со всеми сессиями и master meta-промптом для нового агента. Работаете снова через 10 минут.">
+        Banned by Anthropic? Run <code>claude-backup rescue</code>. You get a portable folder with every session and a master meta-prompt for the new agent. Working again in 10 minutes.
+      </p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🪄</div>
+      <h3 data-en="Lazy install via AI" data-ru="Ленивая установка через AI">Lazy install via AI</h3>
+      <p data-en="No terminal expertise required. The install prompt above turns any AI assistant into your installer. It checks Python, clones, installs, and runs your first backup with you."
+         data-ru="Знание терминала не требуется. Промпт выше превращает любого AI-ассистента в вашего установщика. Он проверит Python, склонирует, установит и сделает с вами первый бэкап.">
+        No terminal expertise required. The install prompt above turns any AI assistant into your installer. It checks Python, clones, installs, and runs your first backup with you.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ RESCUE BANNER ============================================ -->
+<section class="rescue">
+  <div class="rescue-inner">
+    <h2 data-en="The day Anthropic suspends your account, you have <em>~20 seconds</em> to decide what to do."
+        data-ru="В день когда Anthropic заблокирует ваш аккаунт, у вас будет <em>~20 секунд</em> чтобы решить что делать.">
+      The day Anthropic suspends your account, you have <em>~20 seconds</em> to decide what to do.
+    </h2>
+    <p data-en="Reddit and Hacker News are full of legitimate users who got auto-flagged: paying customers, people who used a VPN, people who paid through 'wrong' channels. Appeals take weeks or months."
+       data-ru="Reddit и Hacker News забиты историями нормальных пользователей которых заблокировали автоматически: платящие клиенты, кто пользовался VPN, кто оплатил «неправильным» способом. Апелляции занимают недели или месяцы.">
+      Reddit and Hacker News are full of legitimate users who got auto-flagged: paying customers, people who used a VPN, people who paid through "wrong" channels. Appeals take weeks or months.
+    </p>
+    <p data-en="<strong>The thing they don't tell you:</strong> Anthropic only revokes API access. Your local files in ~/.claude/projects/ and Cowork's data folder are still on your disk. They're yours, not theirs."
+       data-ru="<strong>То, чего не говорят:</strong> Anthropic блокирует только API-доступ. Локальные файлы в ~/.claude/projects/ и в папке Cowork остаются у вас на диске. Они ваши, не их.">
+      <strong>The thing they don't tell you:</strong> Anthropic only revokes API access. Your local files in <code>~/.claude/projects/</code> and Cowork's data folder are still on your disk. They're yours, not theirs.
+    </p>
+    <p data-en="One command — claude-backup rescue — packages everything into a portable bundle. You paste one file into ChatGPT (or any other AI) and it takes over from Claude with full context."
+       data-ru="Одна команда — claude-backup rescue — собирает всё в портативный пакет. Вы вставляете один файл в ChatGPT (или любой другой AI), и он принимает у Claude дела с полным контекстом.">
+      One command — <code>claude-backup rescue</code> — packages everything into a portable bundle. You paste one file into ChatGPT (or any other AI) and it takes over from Claude with full context.
+    </p>
+    <p class="small" data-en="Don't wait until you're banned. It costs nothing to install today."
+                       data-ru="Не ждите бана. Установить сегодня — ничего не стоит.">
+      Don't wait until you're banned. It costs nothing to install today.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================ COMMANDS PEEK ============================================ -->
+<section class="commands">
+  <h2 class="section-title" data-en="The actual commands (just so you know)"
+                            data-ru="Реальные команды (просто для справки)">The actual commands (just so you know)</h2>
+  <p class="section-sub" data-en="Honestly, you don't need to remember these. Paste the install prompt into Claude and it'll guide you. But here's what's under the hood."
+                          data-ru="Честно — запоминать не обязательно. Вставьте установочный промпт в Claude, и он проведёт. Но вот что под капотом.">
+    Honestly, you don't need to remember these. Paste the install prompt into Claude and it'll guide you. But here's what's under the hood.
+  </p>
+  <div class="cmd-list">
+<span class="prompt-mark">$</span> claude-backup list                         <span class="comment"># show every Claude Code & Cowork session</span>
+<span class="prompt-mark">$</span> claude-backup export-all -o ~/backups/      <span class="comment"># back up everything to Markdown</span>
+<span class="prompt-mark">$</span> claude-backup handoff f7a07eec | pbcopy    <span class="comment"># copy a paste-ready prompt for another AI</span>
+<span class="prompt-mark">$</span> claude-backup rescue                        <span class="comment"># 🆘 escape hatch when you're banned</span>
+  </div>
+</section>
+
+<!-- ============================================ FAQ ============================================ -->
+<section class="faq">
+  <h2 class="section-title" data-en="FAQ" data-ru="FAQ">FAQ</h2>
+  <div class="faq-list">
+
+    <details>
+      <summary data-en="I'm not a developer. Can I really use this?"
+               data-ru="Я не программист. Я правда смогу этим пользоваться?">I'm not a developer. Can I really use this?</summary>
+      <div class="faq-body" data-en="Yes — that's the whole point. Click the big orange button to copy the install prompt. Paste it into any AI chat (Claude.ai, ChatGPT, Cursor — whichever you already have open). The AI does all the work: checks your Python, runs the install, runs your first backup. You just answer questions when it asks. ~5 minutes."
+                            data-ru="Да — в этом весь смысл. Нажмите большую оранжевую кнопку — она скопирует установочный промпт. Вставьте его в любой AI-чат (Claude.ai, ChatGPT, Cursor — что уже открыто). AI всё сделает сам: проверит Python, поставит, сделает первый бэкап. Вы только отвечаете на вопросы. ~5 минут.">
+        Yes — that's the whole point. Click the big orange button to copy the install prompt. Paste it into any AI chat (Claude.ai, ChatGPT, Cursor — whichever you already have open). The AI does all the work: checks your Python, runs the install, runs your first backup. You just answer questions when it asks. ~5 minutes.
+      </div>
+    </details>
+
+    <details>
+      <summary data-en="Will Anthropic actually ban me?"
+               data-ru="Anthropic правда меня забанит?">Will Anthropic actually ban me?</summary>
+      <div class="faq-body" data-en="Maybe, maybe not. But automated reviews flag legitimate users every week — paying customers, VPN users, people who paid through non-standard channels. Once the bot decides, you're out. Appeals take weeks. The whole point of this tool is: you don't have to find out the hard way that 3 months of Claude conversations were ONLY in their cloud."
+                            data-ru="Может да, может нет. Но автоматические проверки еженедельно блокируют нормальных пользователей: платящих клиентов, VPN-юзеров, тех кто оплатил нестандартными способами. Бот решил — вы вылетели. Апелляции занимают недели. Смысл утилиты: вам не нужно узнавать через боль, что 3 месяца разговоров с Claude хранились ТОЛЬКО у них в облаке.">
+        Maybe, maybe not. But automated reviews flag legitimate users every week — paying customers, VPN users, people who paid through non-standard channels. Once the bot decides, you're out. Appeals take weeks. The whole point of this tool is: you don't have to find out the hard way that 3 months of Claude conversations were ONLY in their cloud.
+      </div>
+    </details>
+
+    <details>
+      <summary data-en="Does it send my data anywhere?"
+               data-ru="Утилита куда-то отправляет мои данные?">Does it send my data anywhere?</summary>
+      <div class="faq-body" data-en="No. Everything runs locally. The tool reads files that are already on your disk and writes Markdown files next to them. There's no telemetry, no analytics, no server contact. The source is on GitHub — go look."
+                            data-ru="Нет. Всё работает локально. Утилита читает файлы которые уже у вас на диске и пишет Markdown-файлы рядом. Ни телеметрии, ни аналитики, никакого общения с серверами. Исходный код на GitHub — можете посмотреть сами.">
+        No. Everything runs locally. The tool reads files that are already on your disk and writes Markdown files next to them. There's no telemetry, no analytics, no server contact. The source is on GitHub — go look.
+      </div>
+    </details>
+
+    <details>
+      <summary data-en="What if I'm already banned?"
+               data-ru="А если меня уже забанили?">What if I'm already banned?</summary>
+      <div class="faq-body" data-en="Good news: your local files are still there. Anthropic only revokes API access; they can't reach into your disk. Install claude-backup, run claude-backup rescue, and you'll have a bundle you can paste into ChatGPT, Cursor, OpenClaw, or any other AI to keep working."
+                            data-ru="Хорошие новости: ваши локальные файлы на месте. Anthropic блокирует только API-доступ; залезть к вам на диск они не могут. Поставьте claude-backup, запустите claude-backup rescue — получите пакет который можно вставить в ChatGPT, Cursor, OpenClaw или любой другой AI и продолжать работу.">
+        Good news: your local files are still there. Anthropic only revokes API access; they can't reach into your disk. Install <code>claude-backup</code>, run <code>claude-backup rescue</code>, and you'll have a bundle you can paste into ChatGPT, Cursor, OpenClaw, or any other AI to keep working.
+      </div>
+    </details>
+
+    <details>
+      <summary data-en="What does it cost?"
+               data-ru="Сколько стоит?">What does it cost?</summary>
+      <div class="faq-body" data-en="Nothing. It's free, open source, MIT licensed. The author is parallelclaw — the source code is on GitHub. Use it, fork it, ship a better one."
+                            data-ru="Ничего. Бесплатно, open source, MIT-лицензия. Автор — parallelclaw, исходный код на GitHub. Пользуйтесь, форкайте, сделайте лучше.">
+        Nothing. It's free, open source, MIT licensed. The author is parallelclaw — the source code is on GitHub. Use it, fork it, ship a better one.
+      </div>
+    </details>
+
+  </div>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/parallelclaw/claude-backup" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/parallelclaw/claude-backup/blob/main/PROMPT.md" target="_blank" rel="noopener" data-en="Install prompt" data-ru="Установочный промпт">Install prompt</a>
+    <a href="https://github.com/parallelclaw/claude-backup/blob/main/QUICKSTART.md" target="_blank" rel="noopener" data-en="Quickstart" data-ru="Quickstart">Quickstart</a>
+    <a href="https://github.com/parallelclaw/claude-backup/blob/main/README.md" target="_blank" rel="noopener" data-en="Full README" data-ru="Полный README">Full README</a>
+    <a href="https://github.com/parallelclaw/claude-backup/issues" target="_blank" rel="noopener" data-en="Report an issue" data-ru="Сообщить о проблеме">Report an issue</a>
+  </p>
+  <p style="margin-top: 14px; font-size: 13px;">
+    <span data-en="Free • MIT license • Built by"
+          data-ru="Бесплатно • MIT-лицензия • Сделал">Free • MIT license • Built by</span>
+    <a href="https://github.com/parallelclaw" target="_blank" rel="noopener">parallelclaw</a>
+  </p>
+</footer>
+
+<div class="copy-feedback" id="copyFeedback" data-en="✅ Copied. Now paste into any AI chat."
+                                                data-ru="✅ Скопировано. Теперь вставь в любой AI-чат.">✅ Copied. Now paste into any AI chat.</div>
+
+<script>
+  // -------- Install prompts (EN + RU) --------
+  const INSTALL_PROMPT_EN = `I want to install and try \`claude-backup\` — a CLI tool that exports my Claude Code AND Claude Cowork session history (both apps) to local Markdown files. The repo is https://github.com/parallelclaw/claude-backup.
+
+Walk me through it step by step. After each step, wait for me to paste the output before moving on. Be terse — no walls of text, one short paragraph per step is fine. Don't run commands yourself; print the command and let me run it.
+
+The full path:
+
+1. Verify Python 3.9+ (\`python3 --version\`). If older, point me at python.org or \`brew install python\` (macOS) and stop here.
+2. Have me \`git clone https://github.com/parallelclaw/claude-backup.git\` somewhere convenient (default: \`~/Desktop\`) and \`cd\` into the repo.
+3. Have me run \`pip3 install --user -e .\`. If pip warns that the install dir isn't on PATH, give me the right \`export PATH=...\` line for my OS AND tell me how to make it permanent (in \`~/.zshrc\` on macOS / \`~/.bashrc\` on Linux).
+4. Have me run \`claude-backup --version\` to confirm the CLI is reachable.
+5. Have me run \`claude-backup list\` and help me read the table. Columns: Source (Code or Cowork) / Project / Session (8-char prefix) / First Prompt or Title / Msgs / Created. Note that the tool auto-finds both Claude Code (\`~/.claude/projects/\`) and Claude Cowork (\`~/Library/Application Support/Claude/local-agent-mode-sessions/\`); if I have only one, the other is silently skipped.
+6. Pick an interesting session with me and have me run \`claude-backup export <8-char-prefix> --output ./backups/\`. By default this writes two files: \`<id>.md\` (clean dialogue, only my prompts and Claude's text replies) and \`<id>.full.md\` (everything — tool calls, tool results, AND any subagent transcripts the session spawned). Explain when to use each.
+7. Have me \`open ./backups/<filename>.md\` (macOS) or \`xdg-open\` (Linux) to view the result. Ask what I think.
+8. If I want a full backup of everything, have me run \`claude-backup export-all --output ~/claude-backups\`. Explain that the output is split first by source — \`code/\` and \`cowork/\` subfolders — and inside each, organised by project (Code mirrors my real working dirs, Cowork uses the friendly codename like \`beautiful-charming-curie\` that Cowork itself generates).
+9. Mention TWO more useful commands for later — don't make me try them now unless I ask, just plant seeds:
+   - \`claude-backup handoff <prefix> | pbcopy\` — paste-ready prompt to continue ONE session in another AI agent (Claude.ai, ChatGPT, Cursor).
+   - \`claude-backup rescue\` — packages ALL my sessions into a portable bundle (\`claude-rescue-<date>/\`) for the case where my Anthropic account gets suspended. Local files survive bans because they're on my disk, not Anthropic's. The bundle has a \`HANDOFF_PROMPT.md\` I can paste into any new agent (including non-Anthropic models like ChatGPT or Chinese hosted ones) to take over with full context.
+
+If a command errors: help me debug, don't just dump a fix. Common issues —
+- "Claude data not found" → I haven't used either Claude Code or Cowork on this machine yet
+- \`pip: command not found\` → try \`python3 -m pip\` instead
+- \`command not found: claude-backup\` after install → PATH issue, see step 3
+- "externally-managed-environment" pip error → use \`pip3 install --user --break-system-packages -e .\` or a venv
+
+Start with step 1.`;
+
+  const INSTALL_PROMPT_RU = `Я хочу установить и попробовать \`claude-backup\` — CLI-утилиту, которая экспортирует историю моих сессий Claude Code И Claude Cowork (обе утилиты) в локальные Markdown-файлы. Репозиторий — https://github.com/parallelclaw/claude-backup.
+
+Проведи меня по шагам. После каждого шага жди когда я вставлю вывод. Будь лаконичен — никаких стен текста, один короткий абзац на шаг достаточно. Сам команды не выполняй — печатай команду и жди пока я выполню.
+
+Полный путь:
+
+1. Проверить Python 3.9+ (\`python3 --version\`). Если старее — отправь меня на python.org или скажи \`brew install python\` (macOS) и останови процесс.
+2. \`git clone https://github.com/parallelclaw/claude-backup.git\` куда-нибудь удобно (по умолчанию \`~/Desktop\`) и \`cd\` в репозиторий.
+3. \`pip3 install --user -e .\`. Если pip ругается что папка не в PATH — дай правильную строку \`export PATH=...\` для моей системы И объясни как сделать перманентным (в \`~/.zshrc\` на macOS / \`~/.bashrc\` на Linux).
+4. \`claude-backup --version\` — проверить что CLI работает.
+5. \`claude-backup list\` — помоги прочитать таблицу. Колонки: Source (Code или Cowork) / Project / Session (8-символьный префикс) / First Prompt или Title / Msgs / Created. Заметь что утилита авто-находит и Claude Code (\`~/.claude/projects/\`), и Claude Cowork (\`~/Library/Application Support/Claude/local-agent-mode-sessions/\`); если есть только один — другой молча пропускается.
+6. Выбери со мной одну сессию и вели мне \`claude-backup export <8-символьный-префикс> --output ./backups/\`. По умолчанию создаются два файла: \`<id>.md\` (чистый диалог — только мои промпты и текстовые ответы Claude) и \`<id>.full.md\` (всё: tool-вызовы, tool-результаты И transcripts subagent'ов которые сессия порождала). Объясни когда использовать каждый.
+7. \`open ./backups/<filename>.md\` (macOS) или \`xdg-open\` (Linux) — посмотреть результат. Спроси что я думаю.
+8. Если хочу выгрузить всё — \`claude-backup export-all --output ~/claude-backups\`. Объясни что вывод сначала разделён по источнику — подпапки \`code/\` и \`cowork/\`, — а внутри каждой организован по проекту (Code зеркалит реальные рабочие директории, Cowork использует дружелюбный кодноим типа \`beautiful-charming-curie\` который Cowork сам генерирует).
+9. Упомяни ДВЕ полезные команды на будущее — не заставляй пробовать сейчас, просто посади семечки:
+   - \`claude-backup handoff <prefix> | pbcopy\` — paste-ready промпт, чтобы продолжить ОДНУ сессию в другом AI-агенте (Claude.ai, ChatGPT, Cursor).
+   - \`claude-backup rescue\` — упаковывает ВСЕ мои сессии в портативный пакет (\`claude-rescue-<дата>/\`) специально под случай, если Anthropic заблокирует аккаунт. Локальные файлы переживают бан потому что они на моём диске, а не на серверах Anthropic. В пакете есть \`HANDOFF_PROMPT.md\`, который можно вставить в любого нового агента (включая не-Anthropic модели вроде ChatGPT или китайских хостед-моделей), и он принимает с полным контекстом.
+
+Если команда выдаёт ошибку — помоги отладить, не вываливай готовый фикс. Частые проблемы:
+- "Claude data not found" → я ещё не пользовался ни Claude Code, ни Cowork на этой машине
+- \`pip: command not found\` → попробовать \`python3 -m pip\`
+- \`command not found: claude-backup\` после установки → PATH, см. шаг 3
+- ошибка "externally-managed-environment" от pip → \`pip3 install --user --break-system-packages -e .\` или venv
+
+Начни с шага 1.`;
+
+  // -------- Language toggle --------
+  let currentLang = 'en';
+
+  function setLang(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    // Toggle nav buttons
+    document.querySelectorAll('.lang-toggle button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    // Replace text content for elements that have data-en/data-ru
+    document.querySelectorAll('[data-en], [data-ru]').forEach(el => {
+      const text = el.dataset[lang];
+      if (text === undefined) return;
+      // If the element has child HTML elements, only replace if text is identical
+      // For simple cases use innerHTML so we keep <strong>, <em>, <code>
+      el.innerHTML = text;
+    });
+    // Persist
+    try { localStorage.setItem('cb-lang', lang); } catch(e) {}
+  }
+
+  // Restore language preference
+  try {
+    const saved = localStorage.getItem('cb-lang');
+    if (saved === 'ru' || saved === 'en') setLang(saved);
+  } catch(e) {}
+
+  // -------- Copy install prompt --------
+  function copyInstallPrompt() {
+    const prompt = currentLang === 'ru' ? INSTALL_PROMPT_RU : INSTALL_PROMPT_EN;
+    navigator.clipboard.writeText(prompt).then(() => {
+      showCopyFeedback();
+    }).catch(() => {
+      // Fallback for older browsers / non-https
+      const ta = document.createElement('textarea');
+      ta.value = prompt;
+      ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showCopyFeedback();
+    });
+  }
+
+  function showCopyFeedback() {
+    const el = document.getElementById('copyFeedback');
+    el.classList.add('shown');
+    setTimeout(() => el.classList.remove('shown'), 2400);
+  }
+</script>
+
+</body>
+</html>

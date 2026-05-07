@@ -60,12 +60,48 @@ def parse_session(jsonl_path: Path) -> list[Message]:
     return messages
 
 
+SKIP_TOP_TYPES = {"queue-operation", "ai-title", "summary"}
+
+
 def _build_message(data: dict) -> Message | None:
-    """Convert a JSONL record into a Message. Return None if structurally invalid."""
+    """Convert a JSONL record into a Message. Return None if not a chat message.
+
+    Handles two shapes:
+      1. Flat:  {"role": "user", "content": "...", "timestamp": "..."}  (legacy/spec format)
+      2. Nested Claude Code format:
+         {"type": "user", "message": {"role": "user", "content": ...}, "timestamp": ...}
+         {"message": {"role": "assistant", "model": "...", "content": [...]}}
+    """
+    top_type = data.get("type")
+    if isinstance(top_type, str) and top_type in SKIP_TOP_TYPES:
+        return None
+
+    if "attachment" in data and "message" not in data:
+        return None
+
+    nested = data.get("message")
+    if isinstance(nested, dict):
+        role = nested.get("role")
+        if not isinstance(role, str) or not role:
+            return None
+        content = _normalize_content(nested.get("content", ""))
+        if not content.strip():
+            return None
+        timestamp = str(data.get("timestamp", "") or nested.get("timestamp", "") or "")
+        model = str(nested.get("model", "") or data.get("model", "") or "")
+        git_branch = str(data.get("gitBranch", "") or nested.get("gitBranch", "") or "")
+        return Message(
+            role=role,
+            content=content,
+            timestamp=timestamp,
+            model=model,
+            git_branch=git_branch,
+            raw=data,
+        )
+
     role = data.get("role")
     if not role or not isinstance(role, str):
         return None
-
     content = _normalize_content(data.get("content", ""))
     return Message(
         role=role,
@@ -75,6 +111,29 @@ def _build_message(data: dict) -> Message | None:
         git_branch=str(data.get("gitBranch", "") or ""),
         raw=data,
     )
+
+
+def extract_session_title(jsonl_path: Path) -> str:
+    """Pull `aiTitle` from an `ai-title` record if present. Returns '' if not found."""
+    if not jsonl_path.exists():
+        return ""
+    try:
+        with jsonl_path.open("r", encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(data, dict) and data.get("type") == "ai-title":
+                    title = data.get("aiTitle", "")
+                    if isinstance(title, str) and title:
+                        return title
+    except OSError:
+        return ""
+    return ""
 
 
 def _normalize_content(content) -> str:

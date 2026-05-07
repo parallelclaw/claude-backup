@@ -1,0 +1,8 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2026-04-22T06:40:06.202Z","sessionId":"real-001","content":"install superpowers skill"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2026-04-22T06:40:06.219Z","sessionId":"real-001"}
+{"parentUuid":null,"isSidechain":false,"promptId":"abc","type":"user","timestamp":"2026-04-22T06:40:06.500Z","message":{"role":"user","content":"install superpowers skill"}}
+{"parentUuid":"x","isSidechain":false,"attachment":{"type":"deferred_tools_delta","addedNames":["WebFetch"]}}
+{"type":"ai-title","aiTitle":"Install superpowers skill from GitHub","sessionId":"real-001"}
+{"parentUuid":"y","isSidechain":false,"timestamp":"2026-04-22T06:40:10.000Z","message":{"model":"claude-sonnet-4-6","id":"msg_1","type":"message","role":"assistant","content":[{"type":"text","text":"Installing now."},{"type":"tool_use","name":"Bash","id":"t1"}]}}
+{"parentUuid":"z","isSidechain":false,"type":"user","timestamp":"2026-04-22T06:40:15.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"installed"}]}}
+{"parentUuid":"w","isSidechain":false,"timestamp":"2026-04-22T06:40:16.000Z","message":{"model":"claude-sonnet-4-6","id":"msg_2","type":"message","role":"assistant","content":[{"type":"text","text":"Done."}]}}

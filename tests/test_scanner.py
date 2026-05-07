@@ -17,7 +17,7 @@ from claude_backup.scanner import (
 def test_scan_returns_projects(claude_home: Path) -> None:
     projects = scan_projects(claude_home)
     names = {p.name for p in projects}
-    assert names == {"fake-project", "empty-project"}
+    assert names == {"fake-project", "empty-project", "real-format-project"}
 
 
 def test_scan_loads_sessions_from_index(claude_home: Path) -> None:
@@ -40,12 +40,13 @@ def test_session_info_populated_from_index(claude_home: Path) -> None:
     assert abc.jsonl_path.exists()
 
 
-def test_orphan_jsonl_included_with_minimal_metadata(claude_home: Path) -> None:
+def test_orphan_jsonl_metadata_computed_from_file(claude_home: Path) -> None:
+    """Orphan sessions (no entry in index) get metadata streamed from the JSONL itself."""
     projects = scan_projects(claude_home)
     fake = next(p for p in projects if p.name == "fake-project")
     orphan = next(s for s in fake.sessions if s.session_id == "orphan-999")
-    assert orphan.first_prompt == ""
-    assert orphan.message_count == 0
+    assert orphan.first_prompt == "session not in the index"
+    assert orphan.message_count == 2
     assert orphan.jsonl_path is not None
 
 

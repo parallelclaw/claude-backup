@@ -9,7 +9,7 @@ import click
 
 from . import __version__
 from .exporter import export_session
-from .scanner import ProjectInfo, get_claude_home, scan_projects
+from .scanner import ProjectInfo, decode_project_name, get_claude_home, scan_projects
 
 
 @click.group(help="Export Claude Code session history to Markdown.")
@@ -36,15 +36,14 @@ def list_cmd(ctx: click.Context) -> None:
         click.echo("No sessions found.")
         return
 
-    headers = ["Project", "Session ID", "First Prompt", "Msg Count", "Created", "Git Branch"]
+    headers = ["Project", "Session", "First Prompt / Title", "Msgs", "Created"]
     table_rows = [
         [
-            r.project,
-            r.session_id,
-            _truncate(r.first_prompt, 40),
+            _truncate(_project_display(r), 28),
+            r.session_id[:8],
+            _truncate(r.title or r.first_prompt, 50),
             str(r.message_count),
-            r.created or "-",
-            r.git_branch or "-",
+            (r.created or "-")[:19],
         ]
         for r in rows
     ]
@@ -63,18 +62,24 @@ def list_cmd(ctx: click.Context) -> None:
 @click.pass_context
 def export_cmd(ctx: click.Context, session_id: str, output: Path) -> None:
     projects = _safe_scan(ctx.obj.get("claude_home"))
-    target = None
+    matches = []
     for project in projects:
         for session in project.sessions:
-            if session.session_id == session_id:
-                target = session
-                break
-        if target:
-            break
+            if session.session_id == session_id or session.session_id.startswith(session_id):
+                matches.append(session)
 
-    if target is None:
+    if not matches:
         click.echo(f"Session not found: {session_id}", err=True)
         sys.exit(2)
+    if len(matches) > 1:
+        click.echo(
+            f"Ambiguous session prefix '{session_id}' matched {len(matches)} sessions:",
+            err=True,
+        )
+        for m in matches:
+            click.echo(f"  {m.session_id}  ({decode_project_name(m.project)})", err=True)
+        sys.exit(2)
+    target = matches[0]
 
     if target.jsonl_path is None or not target.jsonl_path.exists():
         click.echo(
@@ -145,6 +150,10 @@ def _flatten_sessions(projects):
         for session in project.sessions:
             rows.append(session)
     return rows
+
+
+def _project_display(session) -> str:
+    return decode_project_name(session.project)
 
 
 def _truncate(text: str, length: int) -> str:

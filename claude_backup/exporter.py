@@ -52,17 +52,23 @@ def render_markdown(
     model = _first_non_empty(m.model for m in messages)
     msg_count = session.message_count or len(messages)
 
-    frontmatter = _render_frontmatter(
-        project=session.project,
-        session_id=session.session_id,
-        branch=branch,
-        model=model,
-        messages=msg_count,
-        exported_at=_format_iso(now),
-    )
+    fm_fields = {
+        "project": session.project,
+        "session_id": session.session_id,
+        "branch": branch,
+        "model": model,
+        "messages": msg_count,
+        "exported_at": _format_iso(now),
+    }
+    if session.title:
+        fm_fields["title"] = session.title
+    frontmatter = _render_frontmatter(**fm_fields)
 
     title_branch = branch or "no-branch"
-    header = f"# {session.project} / {title_branch} / {session.session_id}\n"
+    if session.title:
+        header = f"# {session.title}\n\n_{session.project} / {title_branch} / {session.session_id}_\n"
+    else:
+        header = f"# {session.project} / {title_branch} / {session.session_id}\n"
 
     body = _render_body(messages)
 

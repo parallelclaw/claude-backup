@@ -38,10 +38,10 @@ class ProjectInfo:
 
 
 def decode_project_name(folder_name: str) -> str:
-    """Turn `-Users-macbook-Documents-Claude` into `Documents/Claude`.
+    """Short, table-friendly label for a project. Last two path segments only.
 
-    Claude Code encodes the working directory by replacing `/` with `-`.
-    We restore the path and trim down to last 2 segments for readable display.
+    `-Users-macbook-Documents-Claude` → `Documents/Claude`
+    `-Users-macbook-Documents-Claude-Projects-foo-bar` → `foo/bar`
     """
     if not folder_name.startswith("-"):
         return folder_name
@@ -51,6 +51,62 @@ def decode_project_name(folder_name: str) -> str:
     if len(parts) > 2:
         return "/".join(parts[-2:])
     return "/".join(parts)
+
+
+def decode_project_path(
+    folder_name: str, home: Path | None = None
+) -> str:
+    """Reconstruct the original working-directory path as a relative string.
+
+    Claude Code's encoding replaces every `/` and `-` with `-`, so the inverse
+    is ambiguous (was `memex-mvp` one directory or `memex/mvp` two?). We walk
+    the filesystem from root, greedy-matching the longest chunk that resolves
+    to a real directory at each step. Then we drop the user's home prefix.
+    When the path can't be fully resolved on disk, we fall back gracefully.
+
+    `-Users-macbook-Documents-Claude` → `Documents/Claude`
+    `-Users-macbook-Documents-Claude-Projects-memex-mvp` →
+        `Documents/Claude/Projects/memex-mvp` if that directory exists,
+        otherwise `Documents/Claude/Projects/memex/mvp`.
+    `regular-name` → `regular-name` (unencoded names pass through)
+    """
+    if not folder_name.startswith("-"):
+        return folder_name
+    parts = [p for p in folder_name.split("-") if p and p != ".."]
+    if not parts:
+        return folder_name
+
+    home_resolved = (home if home is not None else Path.home()).resolve()
+
+    decoded: list[str] = []
+    cwd = Path("/")
+    remaining = list(parts)
+    while remaining:
+        matched_n = 0
+        if cwd.is_dir():
+            for i in range(len(remaining), 0, -1):
+                candidate = "-".join(remaining[:i])
+                if (cwd / candidate).exists():
+                    matched_n = i
+                    break
+        if matched_n == 0:
+            matched_n = 1
+        chunk = "-".join(remaining[:matched_n])
+        decoded.append(chunk)
+        cwd = cwd / chunk
+        remaining = remaining[matched_n:]
+
+    abs_path = Path("/" + "/".join(decoded)) if decoded else Path("/")
+    try:
+        rel = abs_path.resolve(strict=False).relative_to(home_resolved)
+        rel_str = str(rel)
+        return rel_str if rel_str and rel_str != "." else "home"
+    except ValueError:
+        home_parts = [p for p in home_resolved.parts if p not in ("", "/")]
+        if home_parts and decoded[: len(home_parts)] == home_parts:
+            tail = decoded[len(home_parts):]
+            return "/".join(tail) if tail else "home"
+        return "/".join(decoded)
 
 
 def get_claude_home(custom: Path | None = None) -> Path:

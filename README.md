@@ -124,7 +124,21 @@ claude-backup export-all --output ./backups/ --mode minimal     # only the clean
 claude-backup export-all --output ./backups/ --mode full        # only the .full.md audit copies
 ```
 
-Each project gets its own subdirectory under `--output`.
+The output mirrors the directory layout where you actually ran Claude Code, with your home prefix stripped. So if you used Claude Code in `~/Documents/Claude/` and `~/Documents/Claude/Projects/Administrator/memex-mvp/`, the backup tree looks like:
+
+```
+backups/
+├── Documents/
+│   └── Claude/
+│       ├── 2026-04-06--<id>.md
+│       ├── 2026-04-22--<id>.md
+│       └── Projects/
+│           └── Administrator/
+│               └── memex-mvp/
+│                   └── 2026-05-03--<id>.md
+```
+
+Hyphens in directory names (`memex-mvp`) are recovered correctly when the original directory still exists on disk — the tool walks the filesystem to disambiguate. If the project was deleted, hyphens get split into nested folders as a best-effort fallback.
 
 ### Custom Claude root
 

@@ -124,7 +124,21 @@ claude-backup export-all --output ./backups/ --mode minimal     # только �
 claude-backup export-all --output ./backups/ --mode full        # только .full.md audit-копии
 ```
 
-Каждый проект получает свою поддиректорию в `--output`.
+Структура подпапок в `--output` зеркалит реальное расположение проектов на диске (с вырезанным префиксом домашней директории). Если вы запускали Claude Code в `~/Documents/Claude/` и в `~/Documents/Claude/Projects/Administrator/memex-mvp/`, бэкап будет выглядеть так:
+
+```
+backups/
+├── Documents/
+│   └── Claude/
+│       ├── 2026-04-06--<id>.md
+│       ├── 2026-04-22--<id>.md
+│       └── Projects/
+│           └── Administrator/
+│               └── memex-mvp/
+│                   └── 2026-05-03--<id>.md
+```
+
+Дефисы в именах директорий (`memex-mvp`) восстанавливаются корректно, если исходная директория ещё существует на диске — утилита обходит файловую систему чтобы разрешить ambiguity. Если проект был удалён, дефисы расщепляются на вложенные папки в качестве best-effort fallback.
 
 ### Кастомный путь к Claude
 

@@ -5,7 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from claude_backup.parser import extract_session_title, parse_session
-from claude_backup.scanner import decode_project_name, scan_projects
+from claude_backup.scanner import (
+    decode_project_name,
+    decode_project_path,
+    scan_projects,
+)
 
 
 def test_real_format_skips_queue_ops_and_attachments(claude_home: Path) -> None:
@@ -69,3 +73,49 @@ def test_decode_project_name() -> None:
     assert decode_project_name("-foo-bar") == "foo/bar"
     assert decode_project_name("-just-one") == "just/one"
     assert decode_project_name("") == ""
+
+
+def _encoded(home: Path, *trailing: str) -> str:
+    """Build a Claude-Code-style encoded path: leading '-' + every dir joined by '-'."""
+    home_parts = [p for p in home.parts if p not in ("", "/")]
+    return "-" + "-".join([*home_parts, *trailing])
+
+
+def test_decode_project_path_strips_user_home(tmp_path: Path) -> None:
+    """Used for export-all subdirectory naming. Strip the home-prefix so
+    backups don't bury everything under a useless Users/<name> tree."""
+    encoded = _encoded(tmp_path, "Documents", "Claude")
+    assert decode_project_path(encoded, home=tmp_path) == "Documents/Claude"
+
+
+def test_decode_project_path_recovers_hyphenated_directory_via_fs(
+    tmp_path: Path,
+) -> None:
+    """When a real directory like `memex-mvp` exists on disk, we walk the FS
+    to figure out that those two segments belong together rather than being
+    `memex/mvp`."""
+    (tmp_path / "Projects" / "memex-mvp").mkdir(parents=True)
+    encoded = _encoded(tmp_path, "Projects", "memex", "mvp")
+    assert decode_project_path(encoded, home=tmp_path) == "Projects/memex-mvp"
+
+
+def test_decode_project_path_falls_back_to_split_when_dir_missing(
+    tmp_path: Path,
+) -> None:
+    """If the project directory was deleted, we can't disambiguate hyphens
+    from path separators — split everything and produce a best-effort path."""
+    encoded = _encoded(tmp_path, "Projects", "memex", "mvp")
+    # No `Projects/memex-mvp` on disk — fallback splits everything
+    assert decode_project_path(encoded, home=tmp_path) == "Projects/memex/mvp"
+
+
+def test_decode_project_path_handles_unencoded_names() -> None:
+    """Names that aren't path-encoded (no leading dash) pass through."""
+    assert decode_project_path("regular-project-name") == "regular-project-name"
+    assert decode_project_path("") == ""
+
+
+def test_decode_project_path_drops_parent_traversal_segments(tmp_path: Path) -> None:
+    """Defensive: never let a `..` segment survive into a filesystem path."""
+    decoded = decode_project_path("-..-..-etc-passwd", home=tmp_path)
+    assert ".." not in decoded.split("/")

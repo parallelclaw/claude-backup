@@ -9,7 +9,13 @@ import click
 
 from . import __version__
 from .exporter import export_session
-from .scanner import ProjectInfo, decode_project_name, get_claude_home, scan_projects
+from .scanner import (
+    ProjectInfo,
+    decode_project_name,
+    decode_project_path,
+    get_claude_home,
+    scan_projects,
+)
 
 
 @click.group(help="Export Claude Code session history to Markdown.")
@@ -128,7 +134,7 @@ def export_all_cmd(ctx: click.Context, output: Path, mode: str) -> None:
     skipped = 0
 
     for project in projects:
-        project_out = output / project.name
+        project_out = output / decode_project_path(project.name)
         for session in project.sessions:
             if session.jsonl_path is None or not session.jsonl_path.exists():
                 click.echo(

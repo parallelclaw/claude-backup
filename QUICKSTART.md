@@ -137,7 +137,18 @@ claude-backup export-all --output ./backups/                    # both files per
 claude-backup export-all --output ./backups/ --mode minimal     # only the clean .md files
 ```
 
-Each project gets its own subfolder under `./backups/`. You now have a complete Markdown archive of your Claude Code history.
+The backup tree mirrors the real directories where you ran Claude Code (with your home prefix stripped). For example:
+
+```
+backups/
+├── Documents/Claude/
+│   ├── 2026-04-22--<id>.md
+│   └── 2026-05-07--<id>.md
+└── code/some-project/
+    └── 2026-04-10--<id>.md
+```
+
+You now have a complete Markdown archive of your Claude Code history, organised the way your projects are organised.
 
 ---
 

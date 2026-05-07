@@ -176,6 +176,24 @@ The `<id>.md` file (default and `--mode minimal`) shares the same frontmatter �
 
 ---
 
+## Why the dialogue-only export is more than "the smaller one"
+
+The default `<id>.md` isn't just a slimmer file. Sessions where you produced real intellectual content turn into **self-contained knowledge artifacts** — Markdown documents that live independently of Claude Code, the conversation context, and even your account. A two-hour session where you and Claude analyzed a 1600-message Telegram dump and distilled a Top-10 AI trends list becomes one readable file you can drop into Obsidian, share with a colleague, or commit to a notes repo.
+
+What survives the export cleanly:
+
+- **AI-generated session titles** become the document `H1` heading and land in frontmatter as `title:`.
+- **Mixed Cyrillic / Latin text, emoji, and tables** render correctly — the parser is unicode-clean throughout.
+- **Per-turn timestamps** (e.g. `## User (06:40:06)`) make the timeline easy to follow when re-reading.
+- **Block-level Markdown** — headings, bold, lists, code fences, blockquotes — passes through untouched.
+- **Claude Code's auto-compaction events** (`This session is being continued from a previous conversation...`) are preserved as visible boundaries, so you can see exactly where the original session ran out of context and was summarized.
+
+### Known quirk: the title is frozen at session start
+
+Claude Code generates the AI-title **once**, near the start of a session, and never updates it. So a session that begins "install the superpowers skill" but pivots into a deep AI-trends analysis still ends up with a heading that reflects only the original intent. This is a Claude Code behaviour, not a bug in the exporter — but if it becomes a real pain point, a future `--retitle` flag could regenerate the heading from a summary of the actual content.
+
+---
+
 ## Behaviour
 
 - **Reads the real Claude Code format.** Metadata (first prompt, message count, created timestamp, AI title) is computed by streaming the `.jsonl` directly. No `sessions-index.json` is required — Claude Code doesn't actually create one.

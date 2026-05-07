@@ -180,7 +180,7 @@ tests/
 
 ## OpenClaw users
 
-Exports are compatible with OpenClaw's `memory/` format. Drop exported `.md` files into your `~/.openclaw/workspace/memory/` directory and your new agent retains project context.
+Exported `.md` files can be placed in `~/.openclaw/workspace/memory/` for reference. OpenClaw's `memory_search` will index the content, though the frontmatter fields differ from native OpenClaw memory format.
 
 ---
 

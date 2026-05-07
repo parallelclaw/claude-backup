@@ -137,7 +137,13 @@ def extract_session_title(jsonl_path: Path) -> str:
 
 
 def _normalize_content(content) -> str:
-    """Flatten content into a string. Handles list-of-blocks shape too."""
+    """Flatten Claude content blocks into plain text.
+
+    Handles: plain strings, text blocks, tool_use, tool_result, and image blocks.
+    Skips empty extended-thinking blocks (which contain only encrypted signatures —
+    huge base64 blobs that aren't useful to humans). Non-empty thinking text is
+    preserved in italics.
+    """
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -145,17 +151,30 @@ def _normalize_content(content) -> str:
         for block in content:
             if isinstance(block, str):
                 parts.append(block)
-            elif isinstance(block, dict):
-                if "text" in block and isinstance(block["text"], str):
-                    parts.append(block["text"])
-                elif block.get("type") == "tool_use":
-                    name = block.get("name", "tool")
-                    parts.append(f"[tool_use: {name}]")
-                elif block.get("type") == "tool_result":
-                    inner = block.get("content", "")
-                    parts.append(_normalize_content(inner))
-                else:
-                    parts.append(json.dumps(block, ensure_ascii=False))
+                continue
+            if not isinstance(block, dict):
+                continue
+            block_type = block.get("type")
+            if block_type == "text" and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+            elif "text" in block and isinstance(block["text"], str) and not block_type:
+                parts.append(block["text"])
+            elif block_type == "tool_use":
+                name = block.get("name", "tool")
+                parts.append(f"[tool_use: {name}]")
+            elif block_type == "tool_result":
+                inner = block.get("content", "")
+                parts.append(_normalize_content(inner))
+            elif block_type == "thinking":
+                thought = block.get("thinking", "")
+                if isinstance(thought, str) and thought.strip():
+                    parts.append(f"_<thinking>_\n{thought}\n_</thinking>_")
+            elif block_type == "redacted_thinking":
+                continue
+            elif block_type == "image":
+                parts.append("[image]")
+            elif block_type:
+                parts.append(f"[{block_type}]")
         return "\n".join(p for p in parts if p)
     if content is None:
         return ""

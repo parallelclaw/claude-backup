@@ -106,3 +106,71 @@ def test_session_summary(fake_project_path: Path) -> None:
 def test_message_dataclass_default_raw() -> None:
     m = Message(role="user", content="x")
     assert m.raw == {}
+
+
+def test_thinking_block_with_empty_body_is_skipped(tmp_path: Path) -> None:
+    """Encrypted thinking signatures must never leak into the output."""
+    f = tmp_path / "x.jsonl"
+    f.write_text(
+        '{"role":"assistant","content":['
+        '{"type":"thinking","thinking":"","signature":"EpsMSECRET" }'
+        ',{"type":"text","text":"hello"}'
+        ']}\n'
+    )
+    messages = parse_session(f)
+    assert messages[0].content == "hello"
+    assert "EpsM" not in messages[0].content
+    assert "signature" not in messages[0].content
+
+
+def test_thinking_block_with_visible_text_is_preserved(tmp_path: Path) -> None:
+    f = tmp_path / "x.jsonl"
+    f.write_text(
+        '{"role":"assistant","content":['
+        '{"type":"thinking","thinking":"weighing tradeoffs","signature":"sig"}'
+        ',{"type":"text","text":"answer"}'
+        ']}\n'
+    )
+    messages = parse_session(f)
+    assert "weighing tradeoffs" in messages[0].content
+    assert "answer" in messages[0].content
+    assert "sig" not in messages[0].content
+
+
+def test_redacted_thinking_block_is_skipped(tmp_path: Path) -> None:
+    f = tmp_path / "x.jsonl"
+    f.write_text(
+        '{"role":"assistant","content":['
+        '{"type":"redacted_thinking","data":"opaque-encrypted-blob"}'
+        ',{"type":"text","text":"visible"}'
+        ']}\n'
+    )
+    messages = parse_session(f)
+    assert messages[0].content == "visible"
+    assert "opaque" not in messages[0].content
+
+
+def test_image_block_renders_placeholder(tmp_path: Path) -> None:
+    f = tmp_path / "x.jsonl"
+    f.write_text(
+        '{"role":"user","content":['
+        '{"type":"image","source":{"type":"base64","data":"BASE64HUGE"}}'
+        ',{"type":"text","text":"check this"}'
+        ']}\n'
+    )
+    messages = parse_session(f)
+    assert "[image]" in messages[0].content
+    assert "check this" in messages[0].content
+    assert "BASE64" not in messages[0].content
+
+
+def test_unknown_block_type_renders_short_placeholder(tmp_path: Path) -> None:
+    f = tmp_path / "x.jsonl"
+    f.write_text(
+        '{"role":"assistant","content":['
+        '{"type":"some_future_block","payload":{"big":"data"}}'
+        ']}\n'
+    )
+    messages = parse_session(f)
+    assert messages[0].content == "[some_future_block]"
+    assert "payload" not in messages[0].content

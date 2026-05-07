@@ -64,13 +64,11 @@ New users: see [QUICKSTART.md](./QUICKSTART.md) for the full step-by-step guide 
 
 ## Install
 
-Requires **Python 3.10+** (CI tests 3.10, 3.11, 3.12).
+Requires **Python 3.9+** (CI tests 3.9, 3.10, 3.11, 3.12).
 
 ```bash
 pip install -e .
 ```
-
-> **Note:** If you only have Python 3.9, you can install with `pip install -e . --ignore-requires-python`. The code uses `from __future__ import annotations` and works on 3.9, but official support is 3.10+.
 
 ---
 
@@ -199,7 +197,7 @@ pip install -e ".[dev]"
 pytest -v --cov=claude_backup
 ```
 
-CI runs on Python 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
+CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
 **Test coverage: 91%** (68/68 tests passing) — covers the real Claude Code format, the legacy spec format, edge cases (empty/corrupt JSONL, unicode, missing index), `--mode` selection (both / minimal / full), and CLI integration.
 

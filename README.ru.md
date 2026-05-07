@@ -64,13 +64,11 @@ claude-backup export-all --output ~/claude-backups/
 
 ## Установка
 
-Требуется **Python 3.10+** (CI тестирует 3.10, 3.11, 3.12).
+Требуется **Python 3.9+** (CI тестирует 3.9, 3.10, 3.11, 3.12).
 
 ```bash
 pip install -e .
 ```
-
-> **Примечание:** Если у вас Python 3.9, установка возможна с `pip install -e . --ignore-requires-python`. Код использует `from __future__ import annotations` и работает на 3.9, но официальная поддержка — 3.10+.
 
 ---
 
@@ -196,7 +194,7 @@ pip install -e ".[dev]"
 pytest -v --cov=claude_backup
 ```
 
-CI запускается на Python 3.10, 3.11 и 3.12 — см. [.github/workflows/test.yml](.github/workflows/test.yml).
+CI запускается на Python 3.9, 3.10, 3.11 и 3.12 — см. [.github/workflows/test.yml](.github/workflows/test.yml).
 
 **Покрытие тестами: 91%** (68/68 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, edge-кейсы (пустой/битый JSONL, unicode, отсутствующий индекс), выбор `--mode` (both / minimal / full), и интеграционные тесты CLI.
 

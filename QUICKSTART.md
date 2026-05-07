@@ -19,9 +19,7 @@ python3 --version   # macOS / Linux
 python --version    # Windows (WSL)
 ```
 
-You should see **Python 3.10 or higher**.
-
-> **Note:** If you see Python 3.9, you can still install with `pip install -e . --ignore-requires-python`. The code works on 3.9, but official support and CI target 3.10+.
+You should see **Python 3.9 or higher**. (CI tests 3.9, 3.10, 3.11, 3.12.)
 
 If Python is not installed:
 - **macOS:** install from [python.org/downloads](https://www.python.org/downloads/) or run `brew install python`
@@ -197,7 +195,7 @@ pip install -e .
 | Empty `.md` files | No messages in session | Check `messageCount` in `list` output |
 | Corrupt JSONL warning | Malformed `.jsonl` lines | Normal — tool skips bad lines, continues |
 | Windows: command not found | Native CMD/PowerShell | Use **WSL2** — native Windows not tested |
-| Python version error | Running Python 3.9 | `pip install -e . --ignore-requires-python` or upgrade to 3.10+ |
+| Python version error | Running Python &lt;3.9 | Upgrade to Python 3.9 or newer |
 
 ---
 

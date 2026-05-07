@@ -7,7 +7,7 @@ name = "claude-backup"
 version = "0.1.0"
 description = "Export Claude Code session history to Markdown"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "parallelclaw"}

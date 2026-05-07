@@ -1,28 +1,36 @@
-# Quick Start — 3 Minutes to Your First Backup
+# Quick Start — 5 Minutes to Your First Backup
 
-> Works on **macOS**, **Linux**, and **Windows (WSL2)**.
+> Works on **macOS**, **Linux**, and **Windows (WSL2)**. No prior experience required.
 
 ---
 
-## 1. Prerequisites
+## What this tool does
 
-- **Claude Code** installed and used at least once (so `~/.claude/` exists)
-- **Python 3.10+**
-- `pip` or `uv`
+Claude Code stores every conversation on your computer in a folder called `~/.claude/projects/`. Those files are in a format (`.jsonl`) that's hard to read. **`claude-backup`** turns them into nice, readable Markdown files you can open in any text editor, search, or archive.
 
-Check Python version:
+---
+
+## Step 1 — Check that you have Python
+
+Open a terminal and type:
+
 ```bash
 python3 --version   # macOS / Linux
-python --version    # Windows
+python --version    # Windows (WSL)
 ```
 
-> **Note:** If you only have Python 3.9, you can install with `pip install -e . --ignore-requires-python`. The code uses `from __future__ import annotations` and works on 3.9, but official support and CI target 3.10+.
+You should see **Python 3.10 or higher**.
+
+> **Note:** If you see Python 3.9, you can still install with `pip install -e . --ignore-requires-python`. The code works on 3.9, but official support and CI target 3.10+.
+
+If Python is not installed:
+- **macOS:** install from [python.org/downloads](https://www.python.org/downloads/) or run `brew install python`
+- **Linux:** `sudo apt install python3 python3-pip` (Debian/Ubuntu)
+- **Windows:** use **WSL2** (Ubuntu) — native Windows CMD/PowerShell is not tested
 
 ---
 
-## 2. Install `claude-backup`
-
-### Option A — From source (recommended for latest)
+## Step 2 — Install claude-backup
 
 ```bash
 git clone https://github.com/parallelclaw/claude-backup.git
@@ -30,149 +38,158 @@ cd claude-backup
 pip install -e .
 ```
 
-### Option B — From PyPI (when published)
+> If `pip install` complains about permissions, try `pip install --user -e .` instead.
 
-```bash
-pip install claude-backup
-```
+That's it. You can now run `claude-backup` from any folder.
 
 ---
 
-## 3. Verify installation
-
-```bash
-claude-backup --version
-```
-
-Expected output:
-```
-claude-backup 0.1.0
-```
-
----
-
-## 4. See what you have
+## Step 3 — See what conversations you have
 
 ```bash
 claude-backup list
 ```
 
-Example output:
+You'll see a table of every Claude Code session on your machine:
+
 ```
-Project              Session ID              Messages  Branch     Created
-─────────────────────────────────────────────────────────────────────────────
-my-webapp           a1b2c3d4-e5f6-...       156       main       2026-05-01
-my-webapp           e5f6g7h8-i9j0-...       42        fix-auth   2026-05-03
-landing-page        i9j0k1l2-m3n4-...       89        dev        2026-05-02
+Project    Session ID              First Prompt         Msg Count  Created              Git Branch
+─────────  ──────────────────────  ───────────────────  ─────────  ───────────────────  ──────────
+my-webapp  abc-123                 fix the login bug    42         2026-05-07T10:42:00Z main
+my-webapp  def-456                 add dark mode toggle 18         2026-05-06T14:00:00Z feature/ui
+notes-app  ghi-789                 refactor parser      7          2026-05-04T09:15:00Z main
+```
+
+Each row is one conversation. Pick the one you want to save.
+
+---
+
+## Step 4 — Export a single conversation
+
+Copy the **Session ID** from the table (e.g. `abc-123`) and run:
+
+```bash
+claude-backup export abc-123 --output ./backups/
+```
+
+You'll see:
+
+```
+Exported: backups/2026-05-07--abc-123.md
+```
+
+Open that `.md` file in any text editor. It looks like this:
+
+```markdown
+---
+project: my-webapp
+session_id: abc-123
+branch: main
+model: claude-sonnet-4
+messages: 42
+exported_at: 2026-05-07T15:30:00Z
+---
+
+# my-webapp / main / abc-123
+
+## User (10:42:46)
+fix the login bug
+
+## Assistant (10:42:50)
+Here's the fix...
 ```
 
 ---
 
-## 5. Export one session
+## Step 5 — Export everything at once
 
 ```bash
-# Create a directory for backups
-mkdir -p ~/claude-backups
-
-# Export a single session by ID
-claude-backup export a1b2c3d4 --output ~/claude-backups/
+claude-backup export-all --output ./backups/
 ```
 
-Check the result:
+Each project gets its own subfolder under `./backups/`. You now have a full Markdown archive.
+
+---
+
+## Common questions
+
+**Where does it look for my conversations?**
+
+Default: `~/.claude/projects/` on macOS/Linux, `C:\Users\YourName\.claude\projects\` on Windows (WSL path: `/mnt/c/Users/YourName/.claude/projects/`).
+
+**Can I point it at a different folder?**
+
+Yes — use `--claude-home`:
+
 ```bash
-ls ~/claude-backups/
-# → 2026-05-01--a1b2c3d4.md
+claude-backup --claude-home /some/other/path list
 ```
 
-Open it:
+**Does it modify or delete anything?**
+
+No. The tool only reads from `~/.claude/`. It writes new Markdown files to the output folder you specify. Your original Claude Code data is never touched.
+
+**I see "Claude projects directory not found".**
+
+That means you haven't used Claude Code on this machine yet, or it's installed for a different user account. Open Claude Code and have at least one conversation, then try again.
+
+**A conversation file is corrupted — will the tool crash?**
+
+No. It will print a warning, skip the bad lines, and continue with the rest.
+
+**How do I update to a newer version?**
+
 ```bash
-# macOS
-open ~/claude-backups/2026-05-01--a1b2c3d4.md
-
-# Linux
-cat ~/claude-backups/2026-05-01--a1b2c3d4.md
-
-# Windows (WSL)
-explorer.exe ~/claude-backups/2026-05-01--a1b2c3d4.md
+cd claude-backup
+git pull
+pip install -e .
 ```
 
 ---
 
-## 6. Export everything
+## Troubleshooting
 
-```bash
-claude-backup export-all --output ~/claude-backups/
-```
-
-Result:
-```
-~/claude-backups/
-├── 2026-05-01--a1b2c3d4.md
-├── 2026-05-03--e5f6g7h8.md
-├── 2026-05-02--i9j0k1l2.md
-└── manifest.json          # index of all exported sessions
-```
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| `~/.claude/ not found` | Claude Code never ran | Open Claude Code at least once |
+| `Session not found` | Wrong session ID | Run `claude-backup list` and copy full ID |
+| `Permission denied` | Installed with `sudo` | Use `pip install --user -e .` |
+| Empty `.md` files | No messages in session | Check `messageCount` in `list` output |
+| Corrupt JSONL warning | Malformed `.jsonl` lines | Normal — tool skips bad lines, continues |
+| Windows: command not found | Native CMD/PowerShell | Use **WSL2** — native Windows not tested |
+| Python version error | Running Python 3.9 | `pip install -e . --ignore-requires-python` or upgrade to 3.10+ |
 
 ---
 
-## 7. (Optional) Custom Claude home directory
-
-If Claude Code uses a non-standard data path:
-
-```bash
-claude-backup --claude-home /path/to/custom/.claude list
-claude-backup --claude-home /path/to/custom/.claude export abc-123 --output ~/backups/
-```
-
----
-
-## 8. (Optional) Daily auto-backup
+## (Optional) Daily auto-backup
 
 Add to your shell profile (`~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`):
 
 ```bash
-# Daily Claude Code backup
 cb_backup() {
     local dest="$HOME/claude-backups"
     mkdir -p "$dest"
     claude-backup export-all --output "$dest" --quiet
     cd "$dest" && git add . && git commit -m "backup $(date +%F)" 2>/dev/null
 }
-
-# Run when opening a new terminal
 cb_backup
 ```
 
 Or use cron (macOS / Linux):
 ```bash
-# Edit crontab
 crontab -e
-
-# Add line — runs daily at 9 PM
+# Add: daily at 9 PM
 0 21 * * * /usr/local/bin/claude-backup export-all --output $HOME/claude-backups/ --quiet
 ```
 
 ---
 
-## 9. Troubleshooting
+## Next steps
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `~/.claude/ not found` | Claude Code never ran on this machine | Open Claude Code at least once |
-| `Session not found` | Wrong session ID | Run `claude-backup list` and copy full ID |
-| `Permission denied` | Installed with `sudo` | Use `pip install --user` or virtualenv |
-| Empty `.md` files | Session was cleared / never had messages | Check `claude-backup list` for `messageCount` |
-| Corrupt JSONL warning | Some `.jsonl` lines are malformed | Normal — tool skips bad lines and continues |
-| Windows: command not found | Native CMD/PowerShell | Use **WSL2** (Ubuntu) — native Windows not tested |
-| Python version error | Running Python 3.9 | Use `pip install -e . --ignore-requires-python` or upgrade to 3.10+ |
-
----
-
-## Next Steps
-
-- Read the full [README.md](./README.md) for behaviour details, development setup, and output format
-- See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) if you want to hack on the code
-- Open an [Issue](https://github.com/parallelclaw/claude-backup/issues) if something breaks
+- Add a calendar reminder to run `claude-backup export-all` once a month — instant rolling backup.
+- Open the generated Markdown files in Obsidian, VS Code, or Logseq for full-text search across all your past sessions.
+- Read the full [README.md](./README.md) for behaviour details, development setup, and output format.
+- Open an [Issue](https://github.com/parallelclaw/claude-backup/issues) if something breaks.
 
 ---
 

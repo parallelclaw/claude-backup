@@ -122,6 +122,99 @@ def render_markdown(
     return "\n".join(sections).rstrip() + "\n"
 
 
+_HANDOFF_TEMPLATE_EN = """\
+You are continuing a conversation I started in **{source_label}**.
+
+**Original task:** {title}
+**Started:** {created}{messages_clause}
+
+Read the transcript below, briefly acknowledge you've understood the context, then wait for my next message. Match the language and tone of the conversation.
+
+---
+
+{transcript}
+
+---
+
+(Source: `{session_id}` from {source_label}. Continue from here.)
+"""
+
+
+_HANDOFF_TEMPLATE_RU = """\
+Ты продолжаешь разговор, который я начал в **{source_label}**.
+
+**Исходная задача:** {title}
+**Начат:** {created}{messages_clause}
+
+Прочитай транскрипт ниже, кратко подтверди что понял контекст, и жди следующего сообщения. Сохраняй язык и тон оригинального разговора.
+
+---
+
+{transcript}
+
+---
+
+(Исходная сессия: `{session_id}` из {source_label}. Продолжай отсюда.)
+"""
+
+
+_SOURCE_LABEL_EN = {"code": "Claude Code", "cowork": "Claude Cowork"}
+_SOURCE_LABEL_RU = {"code": "Claude Code", "cowork": "Claude Cowork"}
+
+
+def _has_cyrillic(text: str) -> bool:
+    return any("Ѐ" <= ch <= "ӿ" for ch in text)
+
+
+def detect_handoff_language(session: SessionInfo, messages: list[Message]) -> str:
+    """Pick 'ru' if the title or first user prompt is in Russian, else 'en'."""
+    sample = (session.title or "") + " " + (session.first_prompt or "")
+    if not sample.strip():
+        sample = next(
+            (m.content for m in messages if m.role == "user" and m.content),
+            "",
+        )
+    return "ru" if _has_cyrillic(sample) else "en"
+
+
+def render_handoff(
+    session: SessionInfo,
+    messages: list[Message],
+    lang: str = "auto",
+) -> str:
+    """Build a paste-ready prompt that hands the conversation to another agent.
+
+    `lang`: 'auto' (default — Cyrillic-detected), 'en', or 'ru'.
+    Always uses dialogue-only content (no tool noise) so paste size stays small.
+    """
+    if lang == "auto":
+        lang = detect_handoff_language(session, messages)
+
+    visible = [m for m in messages if is_dialogue_message(m)]
+    transcript_body = _render_body(visible, minimal=True)
+
+    template = _HANDOFF_TEMPLATE_RU if lang == "ru" else _HANDOFF_TEMPLATE_EN
+    label_map = _SOURCE_LABEL_RU if lang == "ru" else _SOURCE_LABEL_EN
+    source_label = label_map.get(session.source, session.source.title())
+
+    title = session.title or session.first_prompt or "(no title)"
+    created = (session.created or "").split("T")[0] or "—"
+    if len(visible) > 0:
+        msg_word = "сообщений" if lang == "ru" else "messages"
+        messages_clause = f" ({len(visible)} {msg_word})"
+    else:
+        messages_clause = ""
+
+    return template.format(
+        source_label=source_label,
+        title=title,
+        created=created,
+        messages_clause=messages_clause,
+        session_id=session.session_id,
+        transcript=transcript_body.rstrip(),
+    )
+
+
 def _render_subagents(subagent_paths: list[Path]) -> str:
     """Render each subagent transcript as a numbered section under a divider."""
     parts: list[str] = ["", "---", "", "# Subagents", ""]

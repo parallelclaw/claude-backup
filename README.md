@@ -53,6 +53,10 @@ claude-backup export f7a07eec --output ~/claude-backups/
 
 # Export everything from both sources (organised by source folder)
 claude-backup export-all --output ~/claude-backups/
+
+# Continue a session in a DIFFERENT agent — paste-ready prompt to your clipboard
+claude-backup handoff f7a07eec | pbcopy        # macOS
+claude-backup handoff f7a07eec | xclip -selection clipboard   # Linux
 ```
 
 By default each export produces **two files** side-by-side:
@@ -162,6 +166,36 @@ claude-backup --cowork-home /path/to/cowork list                          # only
 claude-backup --claude-home /a --cowork-home /b list                      # both, custom roots
 ```
 
+### Continue a session in another agent (`handoff`)
+
+Sometimes you want to keep going in a *different* AI tool — moving a Cowork conversation to claude.ai web, picking up a Code session in ChatGPT or Cursor, sending the discussion to a colleague's agent. The `handoff` command produces a single paste-ready prompt that:
+
+- Tells the new agent it's continuing your conversation
+- Names the source (Claude Code or Claude Cowork) and the original task
+- Drops the full dialogue-only transcript inline (no tool noise, so it stays paste-friendly)
+- Asks the new agent to acknowledge context and wait for your next message
+
+```bash
+claude-backup handoff f7a07eec                                  # print to stdout
+claude-backup handoff f7a07eec | pbcopy                         # macOS — straight to clipboard
+claude-backup handoff f7a07eec | xclip -selection clipboard     # Linux
+claude-backup handoff f7a07eec --output ./handoff.md            # save to a file
+claude-backup handoff f7a07eec --lang en                        # force English wrapper
+claude-backup handoff f7a07eec --lang ru                        # force Russian wrapper
+```
+
+The wrapper language auto-detects from the session: Cyrillic in the title or first prompt → Russian wrapper, otherwise English. The transcript itself is unchanged — the new agent will respond in whatever language the conversation was in.
+
+Workflow:
+
+1. Run `claude-backup handoff <id> | pbcopy`
+2. Open Claude.ai (or ChatGPT, Cursor chat, Perplexity, anywhere)
+3. Paste into a fresh conversation
+4. The agent reads the context, acknowledges in 1–2 sentences
+5. You type your next message — the conversation continues there
+
+A 200-message session typically packs into 80–200 KB of text — fine for context windows of any modern hosted assistant.
+
 ---
 
 ## Output format
@@ -229,6 +263,7 @@ Claude Code generates the AI-title **once**, near the start of a session, and ne
 ## Behaviour
 
 - **Two sources, one CLI.** Both Claude Code (`~/.claude/projects/`) and Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`) are auto-discovered. If only one source exists on a machine, the other is silently skipped.
+- **Portable handoff.** The `handoff` command produces a paste-ready prompt that lets you continue any session in a different AI agent (Claude.ai, ChatGPT, Cursor, etc.). The wrapper auto-detects Russian/English from the session.
 - **Subagents recovered.** Both Code and Cowork spawn subagent transcripts under `<session-id>/subagents/agent-*.jsonl`. The full export pulls them in as separate sections; minimal mode drops them. The frontmatter's `subagents:` count tells you how many were attached.
 - **Reads the real Claude Code format.** Metadata (first prompt, message count, created timestamp, AI title) is computed by streaming the `.jsonl` directly. No `sessions-index.json` is required — Claude Code doesn't actually create one.
 - **AI-titles surfaced.** When the recording app emits an `ai-title` event, the title shows in `list` output and becomes the document heading.
@@ -251,7 +286,7 @@ pytest -v --cov=claude_backup
 
 CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Test coverage: 91%** (85/85 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration across both sources.
+**Test coverage: 90%** (95/95 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration across both sources.
 
 ### Project layout
 
@@ -273,7 +308,8 @@ tests/
 ├── test_cli.py
 ├── test_minimal.py        # Dialogue-only mode + --mode CLI flag
 ├── test_real_format.py    # Nested message shape, ai-title, project-path decoding
-└── test_cowork.py         # Cowork hierarchy + subagent rendering across sources
+├── test_cowork.py         # Cowork hierarchy + subagent rendering across sources
+└── test_handoff.py        # Paste-ready prompt for continuing in another agent
 ```
 
 ---

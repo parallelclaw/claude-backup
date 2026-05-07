@@ -8,7 +8,8 @@ from pathlib import Path
 import click
 
 from . import __version__
-from .exporter import export_session
+from .exporter import export_session, render_handoff
+from .parser import parse_session
 from .scanner import (
     ProjectInfo,
     SOURCE_CODE,
@@ -102,11 +103,74 @@ def list_cmd(ctx: click.Context) -> None:
 def export_cmd(
     ctx: click.Context, session_id: str, output: Path, mode: str
 ) -> None:
-    projects = _safe_scan(ctx.obj.get("claude_home"), ctx.obj.get("cowork_home"))
+    target = _resolve_session_or_exit(
+        session_id, ctx.obj.get("claude_home"), ctx.obj.get("cowork_home")
+    )
+    paths = export_session(target, output, mode=mode)
+    for p in paths:
+        click.echo(f"Exported: {p}")
+
+
+@main.command(
+    "handoff",
+    help=(
+        "Print a paste-ready prompt to continue this session in another AI agent. "
+        "Pipe to your clipboard (e.g. `| pbcopy` on macOS) and paste into "
+        "Claude.ai, ChatGPT, Cursor — any chat agent."
+    ),
+)
+@click.argument("session_id")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Write to a file instead of stdout.",
+)
+@click.option(
+    "--lang",
+    type=click.Choice(["auto", "en", "ru"], case_sensitive=False),
+    default="auto",
+    show_default=True,
+    help="Wrapper language. 'auto' picks Russian if the session has Cyrillic text.",
+)
+@click.pass_context
+def handoff_cmd(
+    ctx: click.Context, session_id: str, output: Path | None, lang: str
+) -> None:
+    target = _resolve_session_or_exit(
+        session_id, ctx.obj.get("claude_home"), ctx.obj.get("cowork_home")
+    )
+    messages = parse_session(target.jsonl_path)
+    prompt = render_handoff(target, messages, lang=lang)
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(prompt, encoding="utf-8")
+        click.echo(f"Wrote handoff prompt to: {output}", err=True)
+    else:
+        click.echo(prompt)
+        # Tip line goes to stderr so `| pbcopy` only captures the prompt
+        size_kb = len(prompt.encode("utf-8")) // 1024
+        click.echo(
+            f"\n💡 {size_kb} KB. Pipe to clipboard: "
+            "`| pbcopy` (macOS) / `| xclip -selection clipboard` (Linux). "
+            "Paste into Claude.ai / ChatGPT / Cursor / any chat agent.",
+            err=True,
+        )
+
+
+def _resolve_session_or_exit(
+    session_id: str, claude_home: Path | None, cowork_home: Path | None
+) -> "ProjectInfo":
+    """Find a session by exact ID or unique prefix. Exit with a useful error otherwise."""
+    projects = _safe_scan(claude_home, cowork_home)
     matches = []
     for project in projects:
         for session in project.sessions:
-            if session.session_id == session_id or session.session_id.startswith(session_id):
+            if session.session_id == session_id or session.session_id.startswith(
+                session_id
+            ):
                 matches.append(session)
 
     if not matches:
@@ -118,19 +182,15 @@ def export_cmd(
             err=True,
         )
         for m in matches:
-            click.echo(f"  {m.session_id}  ({decode_project_name(m.project)})", err=True)
+            click.echo(
+                f"  {m.session_id}  ({decode_project_name(m.project)})", err=True
+            )
         sys.exit(2)
     target = matches[0]
-
     if target.jsonl_path is None or not target.jsonl_path.exists():
-        click.echo(
-            f"Session {session_id} has no JSONL file on disk.", err=True
-        )
+        click.echo(f"Session {session_id} has no JSONL file on disk.", err=True)
         sys.exit(2)
-
-    paths = export_session(target, output, mode=mode)
-    for p in paths:
-        click.echo(f"Exported: {p}")
+    return target
 
 
 @main.command("export-all", help="Export every discovered session.")

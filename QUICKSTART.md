@@ -133,7 +133,25 @@ The clean version is typically **half the size** of the audit copy and is what y
 
 ---
 
-## Step 6 — Export everything at once
+## Step 6 — Continue this conversation in another agent
+
+Want to keep going on this session in **claude.ai web**, **ChatGPT**, **Cursor**, or another AI tool? One command makes a paste-ready prompt:
+
+```bash
+# macOS — straight to your clipboard
+claude-backup handoff abc12345 | pbcopy
+
+# Linux
+claude-backup handoff abc12345 | xclip -selection clipboard
+```
+
+Now open the other agent, paste, and hit send. The pasted message tells the new agent it's continuing your conversation, includes the full clean transcript, and asks it to acknowledge context. After it confirms, you keep typing as if you'd never switched.
+
+The wrapper text auto-detects Russian/English from the session, so you don't have to think about it. Pass `--lang en` or `--lang ru` to override, or `--output handoff.md` to save the prompt to a file instead of stdout.
+
+---
+
+## Step 7 — Export everything at once
 
 ```bash
 claude-backup export-all --output ./backups/                    # both files per session

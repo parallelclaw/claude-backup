@@ -53,6 +53,10 @@ claude-backup export f7a07eec --output ~/claude-backups/
 
 # Экспортировать всё из обоих источников (организовано по source-папкам)
 claude-backup export-all --output ~/claude-backups/
+
+# Продолжить сессию в ДРУГОМ агенте — paste-ready промпт прямо в буфер
+claude-backup handoff f7a07eec | pbcopy        # macOS
+claude-backup handoff f7a07eec | xclip -selection clipboard   # Linux
 ```
 
 По умолчанию каждый экспорт создаёт **два файла** рядом:
@@ -162,6 +166,36 @@ claude-backup --cowork-home /path/to/cowork list                          # то
 claude-backup --claude-home /a --cowork-home /b list                      # оба, кастомные пути
 ```
 
+### Продолжить сессию в другом агенте (`handoff`)
+
+Иногда хочется продолжить разговор в *другом* AI-инструменте — перенести Cowork-сессию в claude.ai web, подцепить Code-сессию в ChatGPT или Cursor, отправить разговор агенту коллеги. Команда `handoff` создаёт один paste-ready промпт, который:
+
+- Говорит новому агенту что он продолжает разговор
+- Называет источник (Claude Code или Claude Cowork) и исходную задачу
+- Подсовывает полный dialogue-only транскрипт (без tool-шума, чтобы paste не разросся)
+- Просит нового агента подтвердить контекст и подождать следующего сообщения
+
+```bash
+claude-backup handoff f7a07eec                                  # печать в stdout
+claude-backup handoff f7a07eec | pbcopy                         # macOS — сразу в буфер
+claude-backup handoff f7a07eec | xclip -selection clipboard     # Linux
+claude-backup handoff f7a07eec --output ./handoff.md            # сохранить в файл
+claude-backup handoff f7a07eec --lang en                        # форсить English-обёртку
+claude-backup handoff f7a07eec --lang ru                        # форсить Russian-обёртку
+```
+
+Язык обёртки авто-определяется по сессии: если в title или первом промпте есть кириллица → русская обёртка, иначе английская. Сам транскрипт не меняется — новый агент ответит на том же языке что был в разговоре.
+
+Workflow:
+
+1. Запустить `claude-backup handoff <id> | pbcopy`
+2. Открыть Claude.ai (или ChatGPT, Cursor чат, Perplexity, что угодно)
+3. Вставить в новый разговор
+4. Агент читает контекст, подтверждает в 1–2 предложениях
+5. Печатаешь следующее сообщение — разговор продолжается там
+
+Сессия из 200 сообщений обычно укладывается в 80–200 КБ текста — нормально для context window любого современного хостед-ассистента.
+
 ---
 
 ## Формат вывода
@@ -226,6 +260,7 @@ Claude Code генерирует AI-title **один раз**, в начале �
 ## Поведение
 
 - **Два источника, один CLI.** И Claude Code (`~/.claude/projects/`), и Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`) обнаруживаются автоматически. Если на машине только один источник — другой молча пропускается.
+- **Портативный handoff.** Команда `handoff` создаёт paste-ready промпт, чтобы продолжить любую сессию в другом AI-агенте (Claude.ai, ChatGPT, Cursor и т.д.). Обёртка авто-выбирает русский или английский по сессии.
 - **Subagents восстанавливаются.** И Code, и Cowork порождают transcripts subagent'ов в `<session-id>/subagents/agent-*.jsonl`. Полный экспорт подтягивает их как отдельные секции; minimal-режим их роняет. Поле `subagents:` в frontmatter показывает сколько было приклеено.
 - **Читает реальный формат Claude Code.** Метаданные (первый промпт, число сообщений, дата создания, AI-title) считаются прямо из `.jsonl` потоковым чтением. Никакого `sessions-index.json` не требуется — Claude Code его на самом деле не создаёт.
 - **AI-titles на видном месте.** Если приложение записало событие `ai-title`, заголовок отображается в `list` и используется как H1 в Markdown-документе.
@@ -248,7 +283,7 @@ pytest -v --cov=claude_backup
 
 CI запускается на Python 3.9, 3.10, 3.11 и 3.12 — см. [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Покрытие тестами: 91%** (85/85 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, вложенная иерархия Cowork, обнаружение и рендеринг subagent'ов, edge-кейсы (пустой/битый JSONL, unicode, отсутствующие root'ы), выбор `--mode` (both / minimal / full), FS-aware декодинг путей, и интеграционные тесты CLI по обоим источникам.
+**Покрытие тестами: 90%** (95/95 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, вложенная иерархия Cowork, обнаружение и рендеринг subagent'ов, edge-кейсы (пустой/битый JSONL, unicode, отсутствующие root'ы), выбор `--mode` (both / minimal / full), FS-aware декодинг путей, и интеграционные тесты CLI по обоим источникам.
 
 ### Структура проекта
 
@@ -270,7 +305,8 @@ tests/
 ├── test_cli.py
 ├── test_minimal.py        # Dialogue-only режим + CLI флаг --mode
 ├── test_real_format.py    # Вложенный формат message, ai-title, декодинг путей
-└── test_cowork.py         # Cowork-иерархия + рендеринг subagent'ов в обоих источниках
+├── test_cowork.py         # Cowork-иерархия + рендеринг subagent'ов в обоих источниках
+└── test_handoff.py        # Paste-ready промпт для продолжения в другом агенте
 ```
 
 ---

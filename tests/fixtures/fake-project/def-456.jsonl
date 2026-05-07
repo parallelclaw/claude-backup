@@ -1,0 +1,2 @@
+{"role": "user", "content": "add unicode support — тест 🚀", "timestamp": "2026-05-06T14:00:00Z", "gitBranch": "feature/unicode"}
+{"role": "assistant", "content": "Поддержка Unicode добавлена ✅", "timestamp": "2026-05-06T14:00:30Z", "model": "claude-opus-4-7", "gitBranch": "feature/unicode"}

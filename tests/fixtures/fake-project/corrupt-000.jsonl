@@ -1,0 +1,5 @@
+{"role": "user", "content": "valid line", "timestamp": "2026-05-03T07:00:00Z"}
+this is not json at all
+{"role": "assistant", "content": "after the bad line", "timestamp": "2026-05-03T07:00:05Z"}
+{this is also broken
+{"role": "user", "content": "final line", "timestamp": "2026-05-03T07:00:10Z"}

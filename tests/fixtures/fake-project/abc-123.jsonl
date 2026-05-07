@@ -1,0 +1,4 @@
+{"role": "user", "content": "fix auth bug", "timestamp": "2026-05-07T10:42:46Z", "gitBranch": "main"}
+{"role": "assistant", "content": "Here's the fix...", "timestamp": "2026-05-07T10:42:50Z", "model": "claude-sonnet-4", "gitBranch": "main"}
+{"role": "tool_result", "content": "patch applied", "timestamp": "2026-05-07T10:43:01Z"}
+{"role": "assistant", "content": [{"type": "text", "text": "All done."}, {"type": "tool_use", "name": "Bash"}], "timestamp": "2026-05-07T10:43:05Z", "model": "claude-sonnet-4"}

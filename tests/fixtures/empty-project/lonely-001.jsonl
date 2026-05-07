@@ -1,0 +1,2 @@
+{"role": "user", "content": "no index, just a jsonl", "timestamp": "2026-05-01T00:00:00Z"}
+{"role": "assistant", "content": "ok", "timestamp": "2026-05-01T00:00:05Z", "model": "claude-sonnet-4-6"}

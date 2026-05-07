@@ -1,0 +1,2 @@
+{"role": "user", "content": "session not in the index", "timestamp": "2026-05-04T08:00:00Z"}
+{"role": "assistant", "content": "Still parseable.", "timestamp": "2026-05-04T08:00:10Z", "model": "claude-haiku-4-5"}

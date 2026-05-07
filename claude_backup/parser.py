@@ -183,7 +183,8 @@ def _normalize_content(content) -> str:
 
 def dialogue_text(msg: "Message") -> str:
     """Extract only human-facing text from a message: no tool_use, no tool_result,
-    no thinking, no images. Used by `--minimal` export mode."""
+    no thinking, no images. Used by the dialogue-only render path (`--mode minimal`
+    and the default `<id>.md` half of `--mode both`)."""
     nested = msg.raw.get("message") if isinstance(msg.raw, dict) else None
     raw = nested if isinstance(nested, dict) else msg.raw
     content = raw.get("content") if isinstance(raw, dict) else None

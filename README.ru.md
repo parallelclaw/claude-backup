@@ -231,24 +231,27 @@ pytest -v --cov=claude_backup
 
 CI запускается на Python 3.9, 3.10, 3.11 и 3.12 — см. [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Покрытие тестами: 91%** (68/68 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, edge-кейсы (пустой/битый JSONL, unicode, отсутствующий индекс), выбор `--mode` (both / minimal / full), и интеграционные тесты CLI.
+**Покрытие тестами: 91%** (73/73 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, edge-кейсы (пустой/битый JSONL, unicode, отсутствующий индекс), выбор `--mode` (both / minimal / full), FS-aware декодинг путей проектов, и интеграционные тесты CLI.
 
 ### Структура проекта
 
 ```
 claude_backup/
 ├── __init__.py
-├── cli.py          # Точка входа Click
-├── scanner.py      # Обнаружение проектов и сессий
-├── parser.py       # Чтение .jsonl
-└── exporter.py     # Рендеринг Markdown
+├── cli.py             # Точка входа Click
+├── scanner.py         # Обнаружение проектов и сессий, декодинг путей
+├── parser.py          # Чтение .jsonl
+└── exporter.py        # Рендеринг Markdown (оба режима)
 
 tests/
-├── fixtures/       # Фейковые данные — реальные ~/.claude/ не читаются в тестах
+├── conftest.py        # Общие фикстуры (claude_home и т.п.)
+├── fixtures/          # Фейковые данные — реальные ~/.claude/ не читаются в тестах
 ├── test_scanner.py
 ├── test_parser.py
 ├── test_exporter.py
-└── test_cli.py
+├── test_cli.py
+├── test_minimal.py    # Dialogue-only режим + CLI флаг --mode
+└── test_real_format.py  # Вложенный формат message, ai-title, декодинг путей
 ```
 
 ---

@@ -221,7 +221,7 @@ Add to your shell profile (`~/.zshrc`, `~/.bashrc`, or `~/.bash_profile`):
 cb_backup() {
     local dest="$HOME/claude-backups"
     mkdir -p "$dest"
-    claude-backup export-all --output "$dest" --quiet
+    claude-backup export-all --output "$dest" >/dev/null
     cd "$dest" && git add . && git commit -m "backup $(date +%F)" 2>/dev/null
 }
 cb_backup
@@ -231,7 +231,7 @@ Or use cron (macOS / Linux):
 ```bash
 crontab -e
 # Add: daily at 9 PM
-0 21 * * * /usr/local/bin/claude-backup export-all --output $HOME/claude-backups/ --quiet
+0 21 * * * /usr/local/bin/claude-backup export-all --output $HOME/claude-backups/ >/dev/null 2>&1
 ```
 
 ---

@@ -234,24 +234,27 @@ pytest -v --cov=claude_backup
 
 CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Test coverage: 91%** (68/68 tests passing) — covers the real Claude Code format, the legacy spec format, edge cases (empty/corrupt JSONL, unicode, missing index), `--mode` selection (both / minimal / full), and CLI integration.
+**Test coverage: 91%** (73/73 tests passing) — covers the real Claude Code format, the legacy spec format, edge cases (empty/corrupt JSONL, unicode, missing index), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration.
 
 ### Project layout
 
 ```
 claude_backup/
 ├── __init__.py
-├── cli.py          # Click entry point
-├── scanner.py      # Discovers projects + sessions
-├── parser.py       # Reads .jsonl files
-└── exporter.py     # Renders Markdown
+├── cli.py             # Click entry point
+├── scanner.py         # Discovers projects + sessions, decodes project paths
+├── parser.py          # Reads .jsonl files
+└── exporter.py        # Renders Markdown (both modes)
 
 tests/
-├── fixtures/       # Fake project data — no real ~/.claude/ data is read in tests
+├── conftest.py        # Shared fixtures (claude_home etc.)
+├── fixtures/          # Fake project data — no real ~/.claude/ is read in tests
 ├── test_scanner.py
 ├── test_parser.py
 ├── test_exporter.py
-└── test_cli.py
+├── test_cli.py
+├── test_minimal.py    # Dialogue-only mode + --mode CLI flag
+└── test_real_format.py  # Nested message shape, ai-title, project-path decoding
 ```
 
 ---

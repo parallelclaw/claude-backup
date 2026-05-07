@@ -223,6 +223,19 @@ Workflow:
 
 A 200-message session typically packs into 80–200 KB of text — fine for context windows of any modern hosted assistant.
 
+### Live MCP memory — `feed-memex`
+
+If you run [memex-mvp](https://github.com/parallelclaw/memex-mvp) (a separate local MCP server), `claude-backup feed-memex` writes a clean dialogue-only JSONL of every session into memex's inbox folder (`~/.memex/inbox/`). Memex picks them up via `chokidar`, indexes via SQLite + FTS5, and exposes them through MCP to **any compatible AI agent** — Cursor, Cline, Claude Code, Continue, Zed.
+
+```bash
+claude-backup feed-memex            # write all sessions to ~/.memex/inbox/
+claude-backup feed-memex --dry-run  # show what would be written
+```
+
+Output is idempotent — re-run anytime, memex dedupes by stable msg_id. Once set up, your Cursor agent can just `memex_search("the migration we discussed in April")` and surface real results from your past Code/Cowork conversations. **Zero paste.** Zero context-switching.
+
+Filename convention: `code-<8char>.jsonl` for Claude Code sessions, `cowork-<8char>.jsonl` for Cowork. Memex distinguishes the two via the prefix and tags them with separate `source` values, so you can filter `memex_search` by source.
+
 ### Rescue bundle (`rescue`) — the banned-user escape hatch
 
 `handoff` is for one session. `rescue` is for **all of them at once** — built specifically for the situation where Anthropic suspends your account and you need to keep working. Your local files survive (Anthropic only revokes API access, not your disk), so you can package the lot and hand it to a different AI provider.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -16,7 +18,7 @@ from .exporter import (
     render_rescue_index,
     render_rescue_readme,
 )
-from .parser import parse_session
+from .parser import dialogue_text, is_dialogue_message, parse_session
 from .scanner import (
     ProjectInfo,
     SOURCE_CODE,
@@ -318,6 +320,118 @@ def rescue_cmd(ctx: click.Context, output: Path | None, lang: str) -> None:
     click.echo(
         f"\n💡 Next: open {output}/HANDOFF_PROMPT.md, copy contents, paste into your new agent."
     )
+
+
+DEFAULT_MEMEX_INBOX = Path.home() / ".memex" / "inbox"
+
+
+@main.command(
+    "feed-memex",
+    help=(
+        "Write clean dialogue-only JSONL exports of every session to "
+        "memex's inbox folder (default ~/.memex/inbox/). Memex (a local "
+        "MCP server, see github.com/parallelclaw/memex-mvp) will index "
+        "them via FTS5 and expose them to any MCP-compatible AI agent "
+        "(Cursor, Cline, Claude Code, Continue, Zed) for live querying."
+    ),
+)
+@click.option(
+    "--inbox",
+    type=click.Path(path_type=Path),
+    default=DEFAULT_MEMEX_INBOX,
+    show_default=True,
+    help="Memex inbox path.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Show what would be written without writing.",
+)
+@click.pass_context
+def feed_memex_cmd(ctx: click.Context, inbox: Path, dry_run: bool) -> None:
+    if not inbox.parent.exists() and not dry_run:
+        click.echo(
+            f"Memex install not found at {inbox.parent}. Install it first:\n"
+            "  https://github.com/parallelclaw/memex-mvp",
+            err=True,
+        )
+        sys.exit(1)
+    if not dry_run:
+        inbox.mkdir(parents=True, exist_ok=True)
+
+    projects = _safe_scan(ctx.obj.get("claude_home"), ctx.obj.get("cowork_home"))
+    written = 0
+    skipped = 0
+    total_msgs = 0
+
+    for project in projects:
+        for session in project.sessions:
+            if session.jsonl_path is None or not session.jsonl_path.exists():
+                continue
+
+            short_id = session.session_id[:8]
+            prefix = "cowork" if session.source == SOURCE_COWORK else "code"
+            target = inbox / f"{prefix}-{short_id}.jsonl"
+
+            messages = parse_session(session.jsonl_path)
+            dialogue = [
+                m
+                for m in messages
+                if m.role in ("user", "assistant") and is_dialogue_message(m)
+            ]
+            if not dialogue:
+                skipped += 1
+                continue
+
+            lines = [
+                _to_memex_record(m, session.session_id, prefix)
+                for m in dialogue
+            ]
+
+            if dry_run:
+                click.echo(
+                    f"would write: {target.name}  ({len(lines)} msgs · "
+                    f"{session.title or session.first_prompt or '(untitled)'})"
+                )
+            else:
+                with target.open("w", encoding="utf-8") as f:
+                    for line in lines:
+                        f.write(json.dumps(line, ensure_ascii=False) + "\n")
+                written += 1
+                total_msgs += len(lines)
+
+    if dry_run:
+        click.echo(f"\nDry run. Would write {written} files; skipped {skipped} empty.")
+        return
+
+    click.echo(
+        f"\n✅ Fed memex: {written} files, {total_msgs} dialogue messages."
+        f"\n   inbox: {inbox}"
+        f"\n   memex (if running) will pick them up via chokidar within seconds."
+        f"\n   Re-run anytime — output is idempotent (memex dedupes by msg_id)."
+    )
+
+
+def _to_memex_record(msg, session_id: str, prefix: str) -> dict:
+    """Serialize a Message into the flat shape memex's claude-code parser expects.
+
+    Memex looks at top-level `role`, `content` (string), `timestamp`, `id`.
+    We use a stable hash for `id` so re-feeding deduplicates via memex's
+    UNIQUE constraint on (source, conversation_id, msg_id).
+    """
+    text = dialogue_text(msg)
+    msg_id_seed = f"{msg.role}|{msg.timestamp}|{text[:200]}"
+    msg_id = hashlib.sha1(msg_id_seed.encode("utf-8")).hexdigest()[:16]
+    record = {
+        "role": msg.role,
+        "content": text,
+        "timestamp": msg.timestamp,
+        "id": f"{prefix}-{session_id[:8]}-{msg_id}",
+    }
+    if msg.model:
+        record["model"] = msg.model
+    return record
 
 
 def _project_subdir(project: ProjectInfo) -> Path:

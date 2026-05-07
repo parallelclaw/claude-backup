@@ -17,17 +17,32 @@ ROLE_LABELS = {
 }
 
 
+EXPORT_MODES = ("both", "minimal", "full")
+
+
 def export_session(
     session: SessionInfo,
     output_dir: Path,
     now: datetime | None = None,
-    minimal: bool = False,
-) -> Path:
-    """Export a single session to Markdown. Returns path to the written file.
+    mode: str = "both",
+) -> list[Path]:
+    """Export a session to Markdown. Returns the list of written file paths.
 
-    When `minimal=True`, drops tool calls, tool results, and reasoning blocks —
-    keeps only the user/assistant dialogue. Filename gets a `.minimal.md` suffix.
+    Two output flavours, controlled by `mode`:
+      - `<date>--<session_id>.md`       — clean dialogue: only user prompts and
+                                          Claude's text replies.
+      - `<date>--<session_id>.full.md`  — everything: tool calls, tool results,
+                                          and any visible thinking text.
+
+    `mode` values:
+      - `"both"`    (default) — write both files
+      - `"minimal"`           — write only the clean `.md` file
+      - `"full"`              — write only the `.full.md` file
     """
+    if mode not in EXPORT_MODES:
+        raise ValueError(
+            f"mode must be one of {EXPORT_MODES}; got {mode!r}"
+        )
     if session.jsonl_path is None or not session.jsonl_path.exists():
         raise FileNotFoundError(
             f"Session JSONL not found for {session.session_id}"
@@ -35,15 +50,25 @@ def export_session(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     messages = parse_session(session.jsonl_path)
-
     date_prefix = _date_prefix(session, messages)
-    suffix = ".minimal.md" if minimal else ".md"
-    filename = f"{date_prefix}--{session.session_id}{suffix}"
-    out_path = output_dir / filename
+    base = f"{date_prefix}--{session.session_id}"
 
-    md = render_markdown(session, messages, now=now, minimal=minimal)
-    out_path.write_text(md, encoding="utf-8")
-    return out_path
+    written: list[Path] = []
+    if mode in ("both", "minimal"):
+        path = output_dir / f"{base}.md"
+        path.write_text(
+            render_markdown(session, messages, now=now, minimal=True),
+            encoding="utf-8",
+        )
+        written.append(path)
+    if mode in ("both", "full"):
+        path = output_dir / f"{base}.full.md"
+        path.write_text(
+            render_markdown(session, messages, now=now, minimal=False),
+            encoding="utf-8",
+        )
+        written.append(path)
+    return written
 
 
 def render_markdown(

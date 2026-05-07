@@ -50,10 +50,13 @@ claude-backup export f7a07eec --output ~/claude-backups/
 
 # Экспортировать всё (каждый проект — в отдельную папку)
 claude-backup export-all --output ~/claude-backups/
-
-# Mini-лог: только ваши сообщения и текстовые ответы Claude, без tool-вызовов
-claude-backup export f7a07eec --output ~/claude-backups/ --minimal
 ```
+
+По умолчанию каждый экспорт создаёт **два файла** рядом:
+- `<date>--<id>.md` — чистый диалог (ваши промпты + текстовые ответы Claude)
+- `<date>--<id>.full.md` — полная audit-копия с tool-вызовами, tool-результатами и блоками рассуждений
+
+Если нужен только один из них — `--mode minimal` или `--mode full`.
 
 Новым пользователям: см. [QUICKSTART.md](./QUICKSTART.md) — полная пошаговая инструкция (macOS, Linux, Windows/WSL).
 
@@ -96,23 +99,31 @@ Documents/Claude  f7a07eec  Build claude-backup CLI tool with export      296   
 claude-backup export f7a07eec --output ./backups/
 ```
 
-Создаёт `./backups/2026-05-07--f7a07eec-<полный-uuid>.md`. **Достаточно первых 8 символов session ID** — утилита сама находит сессию по префиксу.
+По умолчанию создаёт два файла в `./backups/`:
 
-### Mini-лог (`--minimal`)
-
-Когда нужен чистый транскрипт диалога — только ваши промпты и текстовые ответы Claude, без tool-вызовов, tool-результатов и блоков extended thinking:
-
-```bash
-claude-backup export f7a07eec --output ./backups/ --minimal
+```
+2026-05-07--f7a07eec-<полный-uuid>.md       ← чистый диалог, тот что хочется открыть
+2026-05-07--f7a07eec-<полный-uuid>.full.md  ← полная audit-копия со всеми tool-вызовами
 ```
 
-Создаётся отдельный файл с суффиксом `.minimal.md`, чтобы полный и mini-экспорты могли существовать одновременно для одной сессии. В frontmatter — `mode: dialogue-only` и пересчитанный `messages`. Обычно mini-лог занимает 30–50% от объёма полного экспорта.
+**Достаточно первых 8 символов session ID** — утилита сама находит сессию по префиксу.
+
+### Выбор файлов (`--mode`)
+
+| Флаг | Что записывает |
+|------|----------------|
+| _(по умолчанию)_ | оба файла: `<id>.md` и `<id>.full.md` |
+| `--mode minimal` | только `<id>.md` (чистый диалог) |
+| `--mode full` | только `<id>.full.md` (audit-копия) |
+
+`.md` файл — тот, что обычно хочется открыть: как правило в 2 раза меньше audit-копии и читается как обычный чат-лог. `.full.md` — это страховка: каждый tool-вызов, каждый shell-вывод, каждый блок reasoning. Полезно когда реально нужно отдебажить что делал агент.
 
 ### Экспорт всего
 
 ```bash
-claude-backup export-all --output ./backups/
-claude-backup export-all --output ./backups/ --minimal   # mini-версия всех сессий
+claude-backup export-all --output ./backups/                    # оба файла на каждую сессию
+claude-backup export-all --output ./backups/ --mode minimal     # только чистые .md
+claude-backup export-all --output ./backups/ --mode full        # только .full.md audit-копии
 ```
 
 Каждый проект получает свою поддиректорию в `--output`.
@@ -160,7 +171,7 @@ I'll create the utility according to the spec...
 ...
 ```
 
-В режиме `--minimal` frontmatter тот же (плюс поле `mode: dialogue-only`), но в теле остаются только турны `## User` и `## Assistant` с реальным текстом — без `[tool_use: ...]`, без эхо tool-результатов, без блоков thinking.
+В файле `<id>.md` (по умолчанию и при `--mode minimal`) frontmatter тот же — плюс поле `mode: dialogue-only`, — но в теле остаются только турны `## User` и `## Assistant` с реальным текстом. Без `[tool_use: ...]`, без эхо tool-результатов, без блоков extended thinking.
 
 ---
 
@@ -187,7 +198,7 @@ pytest -v --cov=claude_backup
 
 CI запускается на Python 3.10, 3.11 и 3.12 — см. [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Покрытие тестами: 91%** (64/64 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, edge-кейсы (пустой/битый JSONL, unicode, отсутствующий индекс), режим `--minimal` и интеграционные тесты CLI.
+**Покрытие тестами: 91%** (68/68 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, edge-кейсы (пустой/битый JSONL, unicode, отсутствующий индекс), выбор `--mode` (both / minimal / full), и интеграционные тесты CLI.
 
 ### Структура проекта
 

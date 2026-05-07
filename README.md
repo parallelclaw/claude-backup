@@ -50,10 +50,13 @@ claude-backup export f7a07eec --output ~/claude-backups/
 
 # Export everything (each project gets its own subfolder)
 claude-backup export-all --output ~/claude-backups/
-
-# Mini-log: only your messages and Claude's text replies, no tool calls
-claude-backup export f7a07eec --output ~/claude-backups/ --minimal
 ```
+
+By default each export produces **two files** side-by-side:
+- `<date>--<id>.md` — clean dialogue (your prompts + Claude's text replies)
+- `<date>--<id>.full.md` — full audit copy with tool calls, tool results, and reasoning
+
+If you only want one of them, pass `--mode minimal` or `--mode full`.
 
 New users: see [QUICKSTART.md](./QUICKSTART.md) for the full step-by-step guide (macOS, Linux, Windows/WSL).
 
@@ -96,23 +99,31 @@ Documents/Claude  f7a07eec  Build claude-backup CLI tool with export      296   
 claude-backup export f7a07eec --output ./backups/
 ```
 
-Writes `./backups/2026-05-07--f7a07eec-<full-uuid>.md`. **You only need the first 8 characters of the session ID** — the tool resolves the prefix.
+By default writes two files into `./backups/`:
 
-### Mini-log mode (`--minimal`)
-
-When you just want a clean transcript of the conversation — your prompts and Claude's text replies — without tool calls, tool results, or extended-thinking blocks:
-
-```bash
-claude-backup export f7a07eec --output ./backups/ --minimal
+```
+2026-05-07--f7a07eec-<full-uuid>.md       ← clean dialogue, the one you'd open to re-read
+2026-05-07--f7a07eec-<full-uuid>.full.md  ← audit copy with every tool call and result
 ```
 
-Writes a separate file with a `.minimal.md` suffix, so the full and minimal exports can coexist for the same session. Frontmatter records `mode: dialogue-only` and an adjusted `messages` count. Typically the minimal file is 30–50% the size of the full one.
+**You only need the first 8 characters of the session ID** — the tool resolves the prefix.
+
+### Choosing one or both files (`--mode`)
+
+| Flag | Output |
+|------|--------|
+| _(default)_ | both `<id>.md` and `<id>.full.md` |
+| `--mode minimal` | only `<id>.md` (clean dialogue) |
+| `--mode full` | only `<id>.full.md` (audit copy) |
+
+The `.md` file is the version you'll usually open — typically half the size of the audit copy and reads like a normal chat log. The `.full.md` is the safety net: every tool call, every shell output, every internal reasoning step — useful when you actually need to debug what the agent did.
 
 ### Export everything
 
 ```bash
-claude-backup export-all --output ./backups/
-claude-backup export-all --output ./backups/ --minimal   # mini-log version of all sessions
+claude-backup export-all --output ./backups/                    # both files per session
+claude-backup export-all --output ./backups/ --mode minimal     # only the clean .md files
+claude-backup export-all --output ./backups/ --mode full        # only the .full.md audit copies
 ```
 
 Each project gets its own subdirectory under `--output`.
@@ -163,7 +174,7 @@ I'll create the utility according to the spec...
 ...
 ```
 
-`--minimal` mode produces the same frontmatter (with `mode: dialogue-only` added) but the body contains only `## User` and `## Assistant` text turns — no `[tool_use: ...]` markers, no tool-result echoes, no thinking blocks.
+The `<id>.md` file (default and `--mode minimal`) shares the same frontmatter — plus `mode: dialogue-only` — but the body contains only `## User` and `## Assistant` text turns. No `[tool_use: ...]` markers, no tool-result echoes, no extended-thinking blocks.
 
 ---
 
@@ -190,7 +201,7 @@ pytest -v --cov=claude_backup
 
 CI runs on Python 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Test coverage: 91%** (64/64 tests passing) — covers the real Claude Code format, the legacy spec format, edge cases (empty/corrupt JSONL, unicode, missing index), the `--minimal` mode, and CLI integration.
+**Test coverage: 91%** (68/68 tests passing) — covers the real Claude Code format, the legacy spec format, edge cases (empty/corrupt JSONL, unicode, missing index), `--mode` selection (both / minimal / full), and CLI integration.
 
 ### Project layout
 

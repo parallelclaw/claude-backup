@@ -76,9 +76,17 @@ You'll see:
 
 ```
 Exported: backups/2026-05-07--abc12345-...md
+Exported: backups/2026-05-07--abc12345-...full.md
 ```
 
-Open that `.md` file in any text editor. It looks like this:
+**Two files** are written by default:
+
+| File | What's inside | When to use |
+|------|---------------|-------------|
+| `2026-05-07--abc12345-….md` | The conversation: your prompts + Claude's text replies, nothing else | Re-reading later, archiving, sharing |
+| `2026-05-07--abc12345-….full.md` | Everything: every tool call, every shell command, every internal reasoning step | Debugging or auditing what the agent actually did |
+
+Open the `.md` file in any text editor — that's the readable one. It looks like this:
 
 ```markdown
 ---
@@ -88,6 +96,7 @@ branch: main
 model: claude-sonnet-4-6
 messages: 42
 exported_at: 2026-05-07T15:30:00Z
+mode: dialogue-only
 title: Fix the login bug
 ---
 
@@ -102,29 +111,32 @@ fix the login bug
 Here's the fix...
 ```
 
+The `.full.md` file looks similar but includes lines like `## Assistant (10:42:51)\n[tool_use: Edit]` followed by `## User (10:42:52)\nFile updated.` — the agent's tool plumbing.
+
 ---
 
-## Step 5 — Export the mini-log version (just the dialogue)
-
-The default export captures **everything** — your prompts, Claude's replies, and every tool call (file reads, shell commands, etc.) plus their outputs. Useful for an audit trail, but noisy if you just want to read the conversation later.
-
-For a clean transcript with only your messages and Claude's text replies, add `--minimal`:
+## Step 5 — Want only one of the two files?
 
 ```bash
-claude-backup export abc12345 --output ./backups/ --minimal
+# Only the clean conversation
+claude-backup export abc12345 --output ./backups/ --mode minimal
+
+# Only the audit copy
+claude-backup export abc12345 --output ./backups/ --mode full
+
+# Both (default — same as no flag)
+claude-backup export abc12345 --output ./backups/ --mode both
 ```
 
-This writes a separate file with `.minimal.md` suffix. Tool calls, tool results, and Claude's internal reasoning are dropped. Typically the mini-log is **30–50% the size** of the full export and reads like a normal chat log.
-
-You can have both versions of the same session — they don't overwrite each other.
+The clean version is typically **half the size** of the audit copy and is what you'll usually want.
 
 ---
 
 ## Step 6 — Export everything at once
 
 ```bash
-claude-backup export-all --output ./backups/                # full mode
-claude-backup export-all --output ./backups/ --minimal      # mini-log of every session
+claude-backup export-all --output ./backups/                    # both files per session
+claude-backup export-all --output ./backups/ --mode minimal     # only the clean .md files
 ```
 
 Each project gets its own subfolder under `./backups/`. You now have a complete Markdown archive of your Claude Code history.

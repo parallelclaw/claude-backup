@@ -27,7 +27,9 @@ def test_list_handles_missing_claude_home(tmp_path: Path) -> None:
     assert "not found" in result.output.lower()
 
 
-def test_export_command_writes_file(claude_home: Path, tmp_path: Path) -> None:
+def test_export_command_writes_both_files_by_default(
+    claude_home: Path, tmp_path: Path
+) -> None:
     runner = CliRunner()
     out = tmp_path / "backups"
     result = runner.invoke(
@@ -35,9 +37,11 @@ def test_export_command_writes_file(claude_home: Path, tmp_path: Path) -> None:
         ["--claude-home", str(claude_home), "export", "abc-123", "--output", str(out)],
     )
     assert result.exit_code == 0, result.output
-    written = list(out.glob("*.md"))
-    assert len(written) == 1
-    assert "abc-123" in written[0].name
+    written = sorted(p.name for p in out.glob("*.md"))
+    assert written == [
+        "2026-05-07--abc-123.full.md",
+        "2026-05-07--abc-123.md",
+    ]
 
 
 def test_export_unknown_session_returns_error(claude_home: Path, tmp_path: Path) -> None:

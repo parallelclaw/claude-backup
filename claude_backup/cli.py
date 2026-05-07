@@ -60,15 +60,20 @@ def list_cmd(ctx: click.Context) -> None:
     help="Output directory (default: ./backups/).",
 )
 @click.option(
-    "--minimal",
-    is_flag=True,
-    default=False,
-    help="Mini-log: only user/assistant dialogue, no tool calls or reasoning. "
-    "Filename gets a .minimal.md suffix so it doesn't overwrite the full export.",
+    "--mode",
+    type=click.Choice(["both", "minimal", "full"], case_sensitive=False),
+    default="both",
+    show_default=True,
+    help=(
+        "Which file(s) to write. "
+        "'both' writes the clean dialogue (<id>.md) AND the audit copy with tool "
+        "calls (<id>.full.md). 'minimal' writes only the clean dialogue. "
+        "'full' writes only the audit copy."
+    ),
 )
 @click.pass_context
 def export_cmd(
-    ctx: click.Context, session_id: str, output: Path, minimal: bool
+    ctx: click.Context, session_id: str, output: Path, mode: str
 ) -> None:
     projects = _safe_scan(ctx.obj.get("claude_home"))
     matches = []
@@ -96,8 +101,9 @@ def export_cmd(
         )
         sys.exit(2)
 
-    out = export_session(target, output, minimal=minimal)
-    click.echo(f"Exported: {out}")
+    paths = export_session(target, output, mode=mode)
+    for p in paths:
+        click.echo(f"Exported: {p}")
 
 
 @main.command("export-all", help="Export every discovered session.")
@@ -109,13 +115,14 @@ def export_cmd(
     help="Output directory (default: ./backups/).",
 )
 @click.option(
-    "--minimal",
-    is_flag=True,
-    default=False,
-    help="Mini-log mode: only user/assistant dialogue, no tools or reasoning.",
+    "--mode",
+    type=click.Choice(["both", "minimal", "full"], case_sensitive=False),
+    default="both",
+    show_default=True,
+    help="Which file(s) to write per session — see `claude-backup export --help`.",
 )
 @click.pass_context
-def export_all_cmd(ctx: click.Context, output: Path, minimal: bool) -> None:
+def export_all_cmd(ctx: click.Context, output: Path, mode: str) -> None:
     projects = _safe_scan(ctx.obj.get("claude_home"))
     exported = 0
     skipped = 0
@@ -131,8 +138,9 @@ def export_all_cmd(ctx: click.Context, output: Path, minimal: bool) -> None:
                 skipped += 1
                 continue
             try:
-                path = export_session(session, project_out, minimal=minimal)
-                click.echo(f"Exported: {path}")
+                paths = export_session(session, project_out, mode=mode)
+                for p in paths:
+                    click.echo(f"Exported: {p}")
                 exported += 1
             except Exception as e:  # pragma: no cover - defensive
                 click.echo(

@@ -65,24 +65,36 @@ def test_render_markdown_unicode() -> None:
     assert "тест 🚀" in md
 
 
-def test_export_session_writes_file(claude_home: Path, tmp_path: Path) -> None:
+def test_export_session_default_writes_both_files(
+    claude_home: Path, tmp_path: Path
+) -> None:
     session = _abc_session(claude_home)
     out_dir = tmp_path / "out"
     fixed_now = datetime(2026, 5, 7, 15, 30, 0, tzinfo=timezone.utc)
-    out_path = export_session(session, out_dir, now=fixed_now)
+    paths = export_session(session, out_dir, now=fixed_now)
 
-    assert out_path.exists()
-    assert out_path.parent == out_dir
-    assert out_path.name == "2026-05-07--abc-123.md"
+    assert len(paths) == 2
+    names = sorted(p.name for p in paths)
+    assert names == [
+        "2026-05-07--abc-123.full.md",
+        "2026-05-07--abc-123.md",
+    ]
 
-    content = out_path.read_text(encoding="utf-8")
-    assert content.startswith("---\n")
-    assert "project: fake-project" in content
-    assert "session_id: abc-123" in content
-    assert "branch: main" in content
-    assert "messages: 4" in content
-    assert "## User (10:42:46)" in content
-    assert "fix auth bug" in content
+    minimal_path = next(p for p in paths if p.name.endswith(".md") and ".full" not in p.name)
+    full_path = next(p for p in paths if p.name.endswith(".full.md"))
+
+    minimal = minimal_path.read_text(encoding="utf-8")
+    full = full_path.read_text(encoding="utf-8")
+
+    # Default `<id>.md` is the clean dialogue version
+    assert "mode: dialogue-only" in minimal
+    assert "[tool_use:" not in minimal
+    assert "fix auth bug" in minimal
+
+    # `.full.md` is the audit copy
+    assert "mode: dialogue-only" not in full
+    assert "[tool_use: Bash]" in full
+    assert "fix auth bug" in full
 
 
 def test_export_session_creates_output_dir(claude_home: Path, tmp_path: Path) -> None:
@@ -100,12 +112,13 @@ def test_export_missing_jsonl_raises(claude_home: Path, tmp_path: Path) -> None:
         export_session(ghost, tmp_path / "out")
 
 
-def test_export_session_snapshot(claude_home: Path, tmp_path: Path) -> None:
-    """Full snapshot match — guards against accidental format drift."""
+def test_export_session_snapshot_full(claude_home: Path, tmp_path: Path) -> None:
+    """Snapshot match for the .full.md audit copy — guards against format drift."""
     session = _abc_session(claude_home)
     fixed_now = datetime(2026, 5, 7, 15, 30, 0, tzinfo=timezone.utc)
-    out_path = export_session(session, tmp_path, now=fixed_now)
-    actual = out_path.read_text(encoding="utf-8")
+    paths = export_session(session, tmp_path, now=fixed_now, mode="full")
+    assert len(paths) == 1
+    actual = paths[0].read_text(encoding="utf-8")
 
     expected = (
         "---\n"
@@ -139,10 +152,10 @@ def test_export_unicode_session_roundtrip(claude_home: Path, tmp_path: Path) -> 
     projects = scan_projects(claude_home)
     fake = next(p for p in projects if p.name == "fake-project")
     session = next(s for s in fake.sessions if s.session_id == "def-456")
-    out_path = export_session(session, tmp_path)
-    text = out_path.read_text(encoding="utf-8")
-    assert "тест 🚀" in text
-    assert "Поддержка Unicode" in text
+    paths = export_session(session, tmp_path)
+    combined = "\n".join(p.read_text(encoding="utf-8") for p in paths)
+    assert "тест 🚀" in combined
+    assert "Поддержка Unicode" in combined
 
 
 def test_render_markdown_falls_back_to_message_branch_and_model() -> None:

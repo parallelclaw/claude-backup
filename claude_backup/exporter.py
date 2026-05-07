@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .parser import Message, parse_session
+from .parser import Message, dialogue_text, is_dialogue_message, parse_session
 from .scanner import SessionInfo
 
 
@@ -21,8 +21,13 @@ def export_session(
     session: SessionInfo,
     output_dir: Path,
     now: datetime | None = None,
+    minimal: bool = False,
 ) -> Path:
-    """Export a single session to Markdown. Returns path to the written file."""
+    """Export a single session to Markdown. Returns path to the written file.
+
+    When `minimal=True`, drops tool calls, tool results, and reasoning blocks —
+    keeps only the user/assistant dialogue. Filename gets a `.minimal.md` suffix.
+    """
     if session.jsonl_path is None or not session.jsonl_path.exists():
         raise FileNotFoundError(
             f"Session JSONL not found for {session.session_id}"
@@ -32,10 +37,11 @@ def export_session(
     messages = parse_session(session.jsonl_path)
 
     date_prefix = _date_prefix(session, messages)
-    filename = f"{date_prefix}--{session.session_id}.md"
+    suffix = ".minimal.md" if minimal else ".md"
+    filename = f"{date_prefix}--{session.session_id}{suffix}"
     out_path = output_dir / filename
 
-    md = render_markdown(session, messages, now=now)
+    md = render_markdown(session, messages, now=now, minimal=minimal)
     out_path.write_text(md, encoding="utf-8")
     return out_path
 
@@ -44,13 +50,16 @@ def render_markdown(
     session: SessionInfo,
     messages: list[Message],
     now: datetime | None = None,
+    minimal: bool = False,
 ) -> str:
     """Build the full Markdown document for a session."""
     now = now or datetime.now(timezone.utc)
 
+    visible = [m for m in messages if is_dialogue_message(m)] if minimal else messages
+
     branch = session.git_branch or _first_non_empty(m.git_branch for m in messages)
     model = _first_non_empty(m.model for m in messages)
-    msg_count = session.message_count or len(messages)
+    msg_count = len(visible) if minimal else (session.message_count or len(messages))
 
     fm_fields = {
         "project": session.project,
@@ -60,6 +69,8 @@ def render_markdown(
         "messages": msg_count,
         "exported_at": _format_iso(now),
     }
+    if minimal:
+        fm_fields["mode"] = "dialogue-only"
     if session.title:
         fm_fields["title"] = session.title
     frontmatter = _render_frontmatter(**fm_fields)
@@ -70,7 +81,7 @@ def render_markdown(
     else:
         header = f"# {session.project} / {title_branch} / {session.session_id}\n"
 
-    body = _render_body(messages)
+    body = _render_body(visible, minimal=minimal)
 
     parts = [frontmatter, "", header, body]
     return "\n".join(parts).rstrip() + "\n"
@@ -108,7 +119,7 @@ def _yaml_scalar(value) -> str:
     return s
 
 
-def _render_body(messages: list[Message]) -> str:
+def _render_body(messages: list[Message], minimal: bool = False) -> str:
     if not messages:
         return "_No messages._\n"
 
@@ -117,7 +128,11 @@ def _render_body(messages: list[Message]) -> str:
         label = ROLE_LABELS.get(msg.role, msg.role.capitalize())
         time_str = _format_short_time(msg.timestamp)
         heading = f"## {label} ({time_str})" if time_str else f"## {label}"
-        body = msg.content.rstrip() if msg.content else "_(empty)_"
+        if minimal:
+            text = dialogue_text(msg).rstrip()
+        else:
+            text = msg.content.rstrip() if msg.content else ""
+        body = text or "_(empty)_"
         sections.append(f"{heading}\n{body}\n")
     return "\n".join(sections)
 

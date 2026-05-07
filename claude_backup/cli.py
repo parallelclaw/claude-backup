@@ -59,8 +59,17 @@ def list_cmd(ctx: click.Context) -> None:
     default=Path("./backups"),
     help="Output directory (default: ./backups/).",
 )
+@click.option(
+    "--minimal",
+    is_flag=True,
+    default=False,
+    help="Mini-log: only user/assistant dialogue, no tool calls or reasoning. "
+    "Filename gets a .minimal.md suffix so it doesn't overwrite the full export.",
+)
 @click.pass_context
-def export_cmd(ctx: click.Context, session_id: str, output: Path) -> None:
+def export_cmd(
+    ctx: click.Context, session_id: str, output: Path, minimal: bool
+) -> None:
     projects = _safe_scan(ctx.obj.get("claude_home"))
     matches = []
     for project in projects:
@@ -87,7 +96,7 @@ def export_cmd(ctx: click.Context, session_id: str, output: Path) -> None:
         )
         sys.exit(2)
 
-    out = export_session(target, output)
+    out = export_session(target, output, minimal=minimal)
     click.echo(f"Exported: {out}")
 
 
@@ -99,8 +108,14 @@ def export_cmd(ctx: click.Context, session_id: str, output: Path) -> None:
     default=Path("./backups"),
     help="Output directory (default: ./backups/).",
 )
+@click.option(
+    "--minimal",
+    is_flag=True,
+    default=False,
+    help="Mini-log mode: only user/assistant dialogue, no tools or reasoning.",
+)
 @click.pass_context
-def export_all_cmd(ctx: click.Context, output: Path) -> None:
+def export_all_cmd(ctx: click.Context, output: Path, minimal: bool) -> None:
     projects = _safe_scan(ctx.obj.get("claude_home"))
     exported = 0
     skipped = 0
@@ -116,7 +131,7 @@ def export_all_cmd(ctx: click.Context, output: Path) -> None:
                 skipped += 1
                 continue
             try:
-                path = export_session(session, project_out)
+                path = export_session(session, project_out, minimal=minimal)
                 click.echo(f"Exported: {path}")
                 exported += 1
             except Exception as e:  # pragma: no cover - defensive

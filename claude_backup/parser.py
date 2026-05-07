@@ -181,6 +181,37 @@ def _normalize_content(content) -> str:
     return str(content)
 
 
+def dialogue_text(msg: "Message") -> str:
+    """Extract only human-facing text from a message: no tool_use, no tool_result,
+    no thinking, no images. Used by `--minimal` export mode."""
+    nested = msg.raw.get("message") if isinstance(msg.raw, dict) else None
+    raw = nested if isinstance(nested, dict) else msg.raw
+    content = raw.get("content") if isinstance(raw, dict) else None
+
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+
+    parts: list[str] = []
+    for block in content:
+        if isinstance(block, str):
+            parts.append(block)
+            continue
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "text":
+            text = block.get("text", "")
+            if isinstance(text, str) and text:
+                parts.append(text)
+    return "\n".join(parts)
+
+
+def is_dialogue_message(msg: "Message") -> bool:
+    """True if the message has any visible human-facing dialogue text."""
+    return bool(dialogue_text(msg).strip())
+
+
 def session_summary(jsonl_path: Path) -> dict:
     """Quick stats about a session: message count, first prompt, model."""
     messages = parse_session(jsonl_path)

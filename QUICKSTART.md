@@ -50,47 +50,50 @@ That's it. You can now run `claude-backup` from any folder.
 claude-backup list
 ```
 
-You'll see a table of every Claude Code session on your machine:
+You'll see a table of every Claude Code session on your machine. The "First Prompt / Title" column shows the AI-generated session title when Claude Code recorded one, and falls back to your literal first prompt otherwise:
 
 ```
-Project    Session ID              First Prompt         Msg Count  Created              Git Branch
-─────────  ──────────────────────  ───────────────────  ─────────  ───────────────────  ──────────
-my-webapp  abc-123                 fix the login bug    42         2026-05-07T10:42:00Z main
-my-webapp  def-456                 add dark mode toggle 18         2026-05-06T14:00:00Z feature/ui
-notes-app  ghi-789                 refactor parser      7          2026-05-04T09:15:00Z main
+Project           Session   First Prompt / Title                          Msgs  Created
+────────────────  ────────  ────────────────────────────────────────────  ────  ───────────────────
+my-webapp         abc12345  Fix the login bug                             42    2026-05-07T10:42:00
+my-webapp         def45678  Add dark mode toggle                          18    2026-05-06T14:00:00
+notes-app         ghi78901  Refactor parser for nested blocks             7     2026-05-04T09:15:00
 ```
 
-Each row is one conversation. Pick the one you want to save.
+Each row is one conversation. The **Session** column shows just the first 8 characters of the ID — that's all you need to copy for the next step.
 
 ---
 
 ## Step 4 — Export a single conversation
 
-Copy the **Session ID** from the table (e.g. `abc-123`) and run:
+Copy the 8-character **Session** prefix from the table (e.g. `abc12345`) and run:
 
 ```bash
-claude-backup export abc-123 --output ./backups/
+claude-backup export abc12345 --output ./backups/
 ```
 
 You'll see:
 
 ```
-Exported: backups/2026-05-07--abc-123.md
+Exported: backups/2026-05-07--abc12345-...md
 ```
 
 Open that `.md` file in any text editor. It looks like this:
 
 ```markdown
 ---
-project: my-webapp
-session_id: abc-123
+project: "-Users-yourname-projects-my-webapp"
+session_id: abc12345-aaaa-bbbb-cccc-dddddddddddd
 branch: main
-model: claude-sonnet-4
+model: claude-sonnet-4-6
 messages: 42
 exported_at: 2026-05-07T15:30:00Z
+title: Fix the login bug
 ---
 
-# my-webapp / main / abc-123
+# Fix the login bug
+
+_-Users-yourname-projects-my-webapp / main / abc12345-..._
 
 ## User (10:42:46)
 fix the login bug
@@ -101,13 +104,30 @@ Here's the fix...
 
 ---
 
-## Step 5 — Export everything at once
+## Step 5 — Export the mini-log version (just the dialogue)
+
+The default export captures **everything** — your prompts, Claude's replies, and every tool call (file reads, shell commands, etc.) plus their outputs. Useful for an audit trail, but noisy if you just want to read the conversation later.
+
+For a clean transcript with only your messages and Claude's text replies, add `--minimal`:
 
 ```bash
-claude-backup export-all --output ./backups/
+claude-backup export abc12345 --output ./backups/ --minimal
 ```
 
-Each project gets its own subfolder under `./backups/`. You now have a full Markdown archive.
+This writes a separate file with `.minimal.md` suffix. Tool calls, tool results, and Claude's internal reasoning are dropped. Typically the mini-log is **30–50% the size** of the full export and reads like a normal chat log.
+
+You can have both versions of the same session — they don't overwrite each other.
+
+---
+
+## Step 6 — Export everything at once
+
+```bash
+claude-backup export-all --output ./backups/                # full mode
+claude-backup export-all --output ./backups/ --minimal      # mini-log of every session
+```
+
+Each project gets its own subfolder under `./backups/`. You now have a complete Markdown archive of your Claude Code history.
 
 ---
 
@@ -136,6 +156,14 @@ That means you haven't used Claude Code on this machine yet, or it's installed f
 **A conversation file is corrupted — will the tool crash?**
 
 No. It will print a warning, skip the bad lines, and continue with the rest.
+
+**Why are some Session IDs so short in the table?**
+
+The table shows only the first 8 characters of each session ID for readability. The full UUID is in the exported filename. You can pass the short prefix to `export` — the tool resolves it automatically.
+
+**My exports used to contain huge walls of base64 — is that still a thing?**
+
+No. Earlier versions accidentally rendered Claude's encrypted "thinking signatures" as JSON dumps, which produced kilobytes of base64 noise per assistant turn. The current parser strips those entirely while preserving any visible reasoning text.
 
 **How do I update to a newer version?**
 

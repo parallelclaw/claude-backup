@@ -342,7 +342,7 @@ pytest -v --cov=claude_backup
 
 CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Test coverage: 91%** (106/106 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration across both sources.
+**Test coverage: 91%** (106/106 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, the `handoff` paste-prompt generator (with Cyrillic/ASCII language detection), the `rescue` bundle (README/INDEX/HANDOFF_PROMPT generation, single-source fallback, default-output behaviour), and CLI integration across both sources.
 
 ### Project layout
 

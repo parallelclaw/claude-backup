@@ -305,6 +305,8 @@ crontab -e
 
 - Add a calendar reminder to run `claude-backup export-all` once a month — instant rolling backup.
 - Open the generated Markdown files in Obsidian, VS Code, or Logseq for full-text search across all your past sessions.
+- Try `claude-backup handoff <id>` next time you want to continue a conversation in a different AI agent (Claude.ai, ChatGPT, Cursor, etc.) — it produces a paste-ready prompt.
+- Bookmark `claude-backup rescue` for the day Anthropic suspends an account (yours or someone you're helping) — one command produces a portable bundle for any other AI agent.
 - Read the full [README.md](./README.md) for behaviour details, development setup, and output format.
 - Open an [Issue](https://github.com/parallelclaw/claude-backup/issues) if something breaks.
 

@@ -339,7 +339,7 @@ pytest -v --cov=claude_backup
 
 CI запускается на Python 3.9, 3.10, 3.11 и 3.12 — см. [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Покрытие тестами: 91%** (106/106 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, вложенная иерархия Cowork, обнаружение и рендеринг subagent'ов, edge-кейсы (пустой/битый JSONL, unicode, отсутствующие root'ы), выбор `--mode` (both / minimal / full), FS-aware декодинг путей, и интеграционные тесты CLI по обоим источникам.
+**Покрытие тестами: 91%** (106/106 тестов проходят) — реальный формат Claude Code, legacy-формат из спеки, вложенная иерархия Cowork, обнаружение и рендеринг subagent'ов, edge-кейсы (пустой/битый JSONL, unicode, отсутствующие root'ы), выбор `--mode` (both / minimal / full), FS-aware декодинг путей, генератор `handoff` paste-промптов (с авто-детектом кириллицы/ASCII), `rescue` пакет (генерация README/INDEX/HANDOFF_PROMPT, fallback на один источник, поведение default-output), и интеграционные тесты CLI по обоим источникам.
 
 ### Структура проекта
 

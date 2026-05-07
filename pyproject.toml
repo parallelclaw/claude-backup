@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claude-backup"
-version = "0.1.0"
-description = "Export Claude Code session history to Markdown"
+version = "0.2.0"
+description = "Backup Claude Code & Cowork sessions to Markdown; portable handoff to any other AI agent"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}

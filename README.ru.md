@@ -89,6 +89,9 @@ claude-backup rescue
 
 Если нужен только один из них — `--mode minimal` или `--mode full`.
 
+> [!NOTE]
+> **Что-то сломалось при установке или использовании?** [Откройте GitHub issue](https://github.com/parallelclaw/claude-backup/issues/new?template=bug.md) — даже однострочное *«установка упала на шаге 3»* реально полезно. Большинство ранних багов приходит из конфигураций которые я не тестировал, и ваш репорт сразу превращается в фикс.
+
 Новым пользователям: см. [QUICKSTART.md](./QUICKSTART.md) — полная пошаговая инструкция (macOS, Linux, Windows/WSL).
 
 ---

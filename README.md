@@ -89,6 +89,9 @@ By default each export produces **two files** side-by-side:
 
 If you only want one of them, pass `--mode minimal` or `--mode full`.
 
+> [!NOTE]
+> **Something broke during install or use?** [Open a GitHub issue](https://github.com/parallelclaw/claude-backup/issues/new?template=bug.md) — even a one-line *"install failed at step 3"* is genuinely useful. Most early bugs come from setups I haven't tested, and your report goes straight to a fix.
+
 New users: see [QUICKSTART.md](./QUICKSTART.md) for the full step-by-step guide (macOS, Linux, Windows/WSL).
 
 ---

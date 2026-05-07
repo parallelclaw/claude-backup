@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Quick install help
+    url: https://github.com/parallelclaw/claude-backup/blob/main/PROMPT.md
+    about: Paste the install prompt into Claude (or any AI assistant) and it'll walk you through everything.
+  - name: Quickstart guide
+    url: https://github.com/parallelclaw/claude-backup/blob/main/QUICKSTART.md
+    about: Step-by-step walkthrough for first-time users.

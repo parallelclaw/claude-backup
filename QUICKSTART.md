@@ -2,6 +2,9 @@
 
 > Works on **macOS**, **Linux**, and **Windows (WSL2)**. No prior experience required.
 
+> [!TIP]
+> **Even faster path:** paste [the install prompt](./PROMPT.md) into Claude (or any AI assistant) and it'll walk you through this whole guide as a conversation, adapting to your OS and any errors. Most people prefer this over reading.
+
 ---
 
 ## What this tool does

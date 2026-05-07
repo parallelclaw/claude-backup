@@ -4,6 +4,9 @@
 
 [Русский](README.ru.md) · English
 
+> [!TIP]
+> **Don't want to read docs?** Paste [the install prompt](./PROMPT.md) into Claude (or any AI assistant) — it'll handle install + your first backup in about 5 minutes, step by step. **This is the recommended path for 90% of users.**
+
 ---
 
 ## Why

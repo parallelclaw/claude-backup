@@ -315,6 +315,28 @@ Claude Code generates the AI-title **once**, near the start of a session, and ne
 
 ---
 
+## How is this different from cc2md / ccexport / claude-conversation-extractor?
+
+A few similar tools exist for exporting Claude Code sessions to Markdown. They're solid for the basic backup case. Where `claude-backup` differs:
+
+| Capability | `claude-backup` | [cc2md](https://github.com/magarcia/cc2md) | [ccexport](https://github.com/marcheiligers/ccexport) | [claude-conversation-extractor](https://github.com/ZeroSumQuant/claude-conversation-extractor) | [claudit](https://github.com/adam-leigh/claudit) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Claude Code export | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Claude Cowork export** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Subagent transcripts (`<session>/subagents/`)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Handoff prompt for another AI** (`handoff` command) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Account-rescue bundle** (every session + meta-prompt for new agent) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **AI-installer onboarding** (paste a prompt → AI installs the tool) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Dialogue-only mode (drops tool calls) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Encrypted-thinking-signature stripping | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Secret redaction (TruffleHog) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Terminal-rendered preview | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Multi-format output (XML, HTML, JSON) | Markdown only | Markdown | Markdown | MD/JSON/HTML | MD/XML |
+
+Short version: if you only want a Claude Code → Markdown export and you're a developer who'll set things up by hand, the alternatives are great choices. If you want **Cowork support**, **portability to other AI agents** (handoff/rescue), and an **install path that works for non-developers** — that's where this tool is the only option today.
+
+---
+
 ## Behaviour
 
 - **Two sources, one CLI.** Both Claude Code (`~/.claude/projects/`) and Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`) are auto-discovered. If only one source exists on a machine, the other is silently skipped.

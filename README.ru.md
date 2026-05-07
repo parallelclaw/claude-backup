@@ -312,6 +312,28 @@ Claude Code генерирует AI-title **один раз**, в начале �
 
 ---
 
+## Чем это отличается от cc2md / ccexport / claude-conversation-extractor?
+
+В Anthropic-нише уже есть несколько утилит для экспорта Claude Code в Markdown. Для базового backup-кейса они нормальные. В чём `claude-backup` отличается:
+
+| Возможность | `claude-backup` | [cc2md](https://github.com/magarcia/cc2md) | [ccexport](https://github.com/marcheiligers/ccexport) | [claude-conversation-extractor](https://github.com/ZeroSumQuant/claude-conversation-extractor) | [claudit](https://github.com/adam-leigh/claudit) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Экспорт Claude Code | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Экспорт Claude Cowork** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Subagent transcripts (`<session>/subagents/`)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Handoff-промпт для другого AI** (команда `handoff`) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Account-rescue пакет** (все сессии + meta-промпт для нового агента) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **AI-installer onboarding** (paste prompt → AI ставит утилиту) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Dialogue-only режим (без tool-вызовов) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Удаление зашифрованных thinking-сигнатур | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Secret redaction (TruffleHog) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Terminal-rendered предпросмотр | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Несколько форматов (XML, HTML, JSON) | только Markdown | Markdown | Markdown | MD/JSON/HTML | MD/XML |
+
+Короткая версия: если нужен только экспорт Claude Code → Markdown и вы разработчик который всё настроит руками — альтернативы отличные. Если нужны **поддержка Cowork**, **портативность в другие AI-агенты** (handoff/rescue) и **путь установки для не-разработчиков** — на сегодня это единственная утилита с такой комбинацией.
+
+---
+
 ## Поведение
 
 - **Два источника, один CLI.** И Claude Code (`~/.claude/projects/`), и Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`) обнаруживаются автоматически. Если на машине только один источник — другой молча пропускается.

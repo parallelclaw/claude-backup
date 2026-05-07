@@ -18,7 +18,7 @@ Copy everything between the lines:
 ---
 
 ```
-I want to install and try `claude-backup` — a CLI tool that exports my Claude Code session history to local Markdown files. The repo is https://github.com/parallelclaw/claude-backup.
+I want to install and try `claude-backup` — a CLI tool that exports my Claude Code AND Claude Cowork session history (both apps) to local Markdown files. The repo is https://github.com/parallelclaw/claude-backup.
 
 Walk me through it step by step. After each step, wait for me to paste the output before moving on. Be terse — no walls of text, one short paragraph per step is fine. Don't run commands yourself; print the command and let me run it.
 
@@ -28,13 +28,13 @@ The full path:
 2. Have me `git clone https://github.com/parallelclaw/claude-backup.git` somewhere convenient (default: `~/Desktop`) and `cd` into the repo.
 3. Have me run `pip3 install --user -e .`. If pip warns that the install dir isn't on PATH, give me the right `export PATH=...` line for my OS AND tell me how to make it permanent (in `~/.zshrc` on macOS / `~/.bashrc` on Linux).
 4. Have me run `claude-backup --version` to confirm the CLI is reachable.
-5. Have me run `claude-backup list` and help me read the table — explain what each column means (Project / Session / First Prompt or Title / Msgs / Created).
-6. Pick an interesting session with me and have me run `claude-backup export <8-char-prefix> --output ./backups/`. By default this writes two files: `<id>.md` (clean dialogue, only my prompts and Claude's text replies) and `<id>.full.md` (everything, including tool calls and tool results). Explain when to use each.
+5. Have me run `claude-backup list` and help me read the table. Columns: Source (Code or Cowork) / Project / Session (8-char prefix) / First Prompt or Title / Msgs / Created. Note that the tool auto-finds both Claude Code (`~/.claude/projects/`) and Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`); if I have only one, the other is silently skipped.
+6. Pick an interesting session with me and have me run `claude-backup export <8-char-prefix> --output ./backups/`. By default this writes two files: `<id>.md` (clean dialogue, only my prompts and Claude's text replies) and `<id>.full.md` (everything — tool calls, tool results, AND any subagent transcripts the session spawned). Explain when to use each.
 7. Have me `open ./backups/<filename>.md` (macOS) or `xdg-open` (Linux) to view the result. Ask what I think.
-8. If I want a full backup of everything, have me run `claude-backup export-all --output ~/claude-backups`. Explain that the resulting folders mirror my real working directories (with the home prefix stripped).
+8. If I want a full backup of everything, have me run `claude-backup export-all --output ~/claude-backups`. Explain that the output is split first by source — `code/` and `cowork/` subfolders — and inside each, organised by project (Code mirrors my real working dirs, Cowork uses the friendly codename like `beautiful-charming-curie` that Cowork itself generates).
 
 If a command errors: help me debug, don't just dump a fix. Common issues —
-- `~/.claude/projects/` not found → I haven't used Claude Code on this machine yet
+- "Claude data not found" → I haven't used either Claude Code or Cowork on this machine yet
 - `pip: command not found` → try `python3 -m pip` instead
 - `command not found: claude-backup` after install → PATH issue, see step 3
 - "externally-managed-environment" pip error → use `pip3 install --user --break-system-packages -e .` or a venv
@@ -51,7 +51,7 @@ Start with step 1.
 ---
 
 ```
-Я хочу установить и попробовать `claude-backup` — CLI-утилиту, которая экспортирует историю моих сессий Claude Code в локальные Markdown-файлы. Репозиторий — https://github.com/parallelclaw/claude-backup.
+Я хочу установить и попробовать `claude-backup` — CLI-утилиту, которая экспортирует историю моих сессий Claude Code И Claude Cowork (обе утилиты) в локальные Markdown-файлы. Репозиторий — https://github.com/parallelclaw/claude-backup.
 
 Проведи меня по шагам. После каждого шага жди когда я вставлю вывод. Будь лаконичен — никаких стен текста, один короткий абзац на шаг достаточно. Сам команды не выполняй — печатай команду и жди пока я выполню.
 
@@ -61,13 +61,13 @@ Start with step 1.
 2. `git clone https://github.com/parallelclaw/claude-backup.git` куда-нибудь удобно (по умолчанию `~/Desktop`) и `cd` в репозиторий.
 3. `pip3 install --user -e .`. Если pip ругается что папка не в PATH — дай правильную строку `export PATH=...` для моей системы И объясни как сделать перманентным (в `~/.zshrc` на macOS / `~/.bashrc` на Linux).
 4. `claude-backup --version` — проверить что CLI работает.
-5. `claude-backup list` — помоги прочитать таблицу, объясни колонки (Project / Session / First Prompt или Title / Msgs / Created).
-6. Выбери со мной одну сессию и вели мне `claude-backup export <8-символьный-префикс> --output ./backups/`. По умолчанию создаются два файла: `<id>.md` (чистый диалог — только мои промпты и текстовые ответы Claude) и `<id>.full.md` (всё, включая tool-вызовы и tool-результаты). Объясни когда использовать каждый.
+5. `claude-backup list` — помоги прочитать таблицу. Колонки: Source (Code или Cowork) / Project / Session (8-символьный префикс) / First Prompt или Title / Msgs / Created. Заметь что утилита авто-находит и Claude Code (`~/.claude/projects/`), и Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`); если есть только один — другой молча пропускается.
+6. Выбери со мной одну сессию и вели мне `claude-backup export <8-символьный-префикс> --output ./backups/`. По умолчанию создаются два файла: `<id>.md` (чистый диалог — только мои промпты и текстовые ответы Claude) и `<id>.full.md` (всё: tool-вызовы, tool-результаты И transcripts subagent'ов которые сессия порождала). Объясни когда использовать каждый.
 7. `open ./backups/<filename>.md` (macOS) или `xdg-open` (Linux) — посмотреть результат. Спроси что я думаю.
-8. Если хочу выгрузить всё — `claude-backup export-all --output ~/claude-backups`. Объясни что папки в результате зеркалят реальные рабочие директории (с вырезанным home-префиксом).
+8. Если хочу выгрузить всё — `claude-backup export-all --output ~/claude-backups`. Объясни что вывод сначала разделён по источнику — подпапки `code/` и `cowork/`, — а внутри каждой организован по проекту (Code зеркалит реальные рабочие директории, Cowork использует дружелюбный кодноим типа `beautiful-charming-curie` который Cowork сам генерирует).
 
 Если команда выдаёт ошибку — помоги отладить, не вываливай готовый фикс. Частые проблемы:
-- `~/.claude/projects/` отсутствует → я ещё не пользовался Claude Code на этой машине
+- "Claude data not found" → я ещё не пользовался ни Claude Code, ни Cowork на этой машине
 - `pip: command not found` → попробовать `python3 -m pip`
 - `command not found: claude-backup` после установки → PATH, см. шаг 3
 - ошибка "externally-managed-environment" от pip → `pip3 install --user --break-system-packages -e .` или venv

@@ -1,0 +1,2 @@
+{"parentUuid":null,"isSidechain":true,"agentId":"acode1","type":"user","timestamp":"2026-05-07T10:43:30Z","message":{"role":"user","content":"Find all .py files matching pattern X"}}
+{"parentUuid":"sub-x","isSidechain":true,"agentId":"acode1","timestamp":"2026-05-07T10:43:45Z","message":{"model":"claude-haiku-4-5","id":"sub-msg-1","type":"message","role":"assistant","content":[{"type":"text","text":"Found 3 matches in src/auth/."}]}}

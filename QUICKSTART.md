@@ -9,7 +9,7 @@
 
 ## What this tool does
 
-Claude Code stores every conversation on your computer in a folder called `~/.claude/projects/`. Those files are in a format (`.jsonl`) that's hard to read. **`claude-backup`** turns them into nice, readable Markdown files you can open in any text editor, search, or archive.
+Claude Code and Claude Cowork (the local-agent desktop app) both store every conversation on your computer — in `~/.claude/projects/` and `~/Library/Application Support/Claude/local-agent-mode-sessions/` respectively. Those files are in a format (`.jsonl`) that's hard to read. **`claude-backup`** finds both, walks any subagents they spawned, and turns the lot into nice, readable Markdown files you can open in any text editor, search, or archive.
 
 ---
 
@@ -51,14 +51,14 @@ That's it. You can now run `claude-backup` from any folder.
 claude-backup list
 ```
 
-You'll see a table of every Claude Code session on your machine. The "First Prompt / Title" column shows the AI-generated session title when Claude Code recorded one, and falls back to your literal first prompt otherwise:
+You'll see a table of every conversation on your machine — across **both** Claude Code and Claude Cowork. The Source column tells you which app it came from. The "First Prompt / Title" column shows the AI-generated session title when Claude recorded one, and falls back to your literal first prompt otherwise:
 
 ```
-Project           Session   First Prompt / Title                          Msgs  Created
-────────────────  ────────  ────────────────────────────────────────────  ────  ───────────────────
-my-webapp         abc12345  Fix the login bug                             42    2026-05-07T10:42:00
-my-webapp         def45678  Add dark mode toggle                          18    2026-05-06T14:00:00
-notes-app         ghi78901  Refactor parser for nested blocks             7     2026-05-04T09:15:00
+Source  Project                   Session   First Prompt / Title                          Msgs  Created
+──────  ────────────────────────  ────────  ────────────────────────────────────────────  ────  ───────────────────
+Code    my-webapp                 abc12345  Fix the login bug                             42    2026-05-07T10:42:00
+Code    my-webapp                 def45678  Add dark mode toggle                          18    2026-05-06T14:00:00
+Cowork  beautiful-charming-curie  ghi78901  Q2 results slide deck                         88    2026-05-04T09:15:00
 ```
 
 Each row is one conversation. The **Session** column shows just the first 8 characters of the ID — that's all you need to copy for the next step.
@@ -85,7 +85,7 @@ Exported: backups/2026-05-07--abc12345-...full.md
 | File | What's inside | When to use |
 |------|---------------|-------------|
 | `2026-05-07--abc12345-….md` | The conversation: your prompts + Claude's text replies, nothing else | Re-reading later, archiving, sharing |
-| `2026-05-07--abc12345-….full.md` | Everything: every tool call, every shell command, every internal reasoning step | Debugging or auditing what the agent actually did |
+| `2026-05-07--abc12345-….full.md` | Everything: every tool call, every shell command, every internal reasoning step, **plus full transcripts of any subagents the session spawned** | Debugging or auditing what the agent actually did |
 
 Open the `.md` file in any text editor — that's the readable one. It looks like this:
 
@@ -140,18 +140,22 @@ claude-backup export-all --output ./backups/                    # both files per
 claude-backup export-all --output ./backups/ --mode minimal     # only the clean .md files
 ```
 
-The backup tree mirrors the real directories where you ran Claude Code (with your home prefix stripped). For example:
+The backup tree is split by source first, then mirrors how each app organises sessions. For example:
 
 ```
 backups/
-├── Documents/Claude/
-│   ├── 2026-04-22--<id>.md
-│   └── 2026-05-07--<id>.md
-└── code/some-project/
-    └── 2026-04-10--<id>.md
+├── code/                              ← Claude Code sessions, mirroring your real working dirs
+│   └── Documents/Claude/
+│       ├── 2026-04-22--<id>.md
+│       └── 2026-05-07--<id>.md
+└── cowork/                            ← Claude Cowork sessions, by friendly codename
+    ├── beautiful-charming-curie/
+    │   └── 2026-04-06--<id>.md
+    └── upbeat-epic-feynman/
+        └── 2026-04-20--<id>.md
 ```
 
-You now have a complete Markdown archive of your Claude Code history, organised the way your projects are organised.
+You now have a complete Markdown archive of every Claude conversation across both apps.
 
 ---
 
@@ -159,14 +163,19 @@ You now have a complete Markdown archive of your Claude Code history, organised 
 
 **Where does it look for my conversations?**
 
-Default: `~/.claude/projects/` on macOS/Linux, `C:\Users\YourName\.claude\projects\` on Windows (WSL path: `/mnt/c/Users/YourName/.claude/projects/`).
+Two places, both auto-detected:
+- **Claude Code:** `~/.claude/projects/` (Windows/WSL: `/mnt/c/Users/YourName/.claude/projects/`)
+- **Claude Cowork:** `~/Library/Application Support/Claude/local-agent-mode-sessions/` (macOS only)
+
+If only one exists, the tool just uses that one. No flag needed.
 
 **Can I point it at a different folder?**
 
-Yes — use `--claude-home`:
+Yes — each source has its own override:
 
 ```bash
-claude-backup --claude-home /some/other/path list
+claude-backup --claude-home /some/other/code-path list
+claude-backup --cowork-home /some/other/cowork-path list
 ```
 
 **Does it modify or delete anything?**

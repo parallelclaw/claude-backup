@@ -1,4 +1,15 @@
-"""Scanner: Discovers Claude project directories and computes session metadata."""
+"""Scanner: Discovers Claude project directories and computes session metadata.
+
+Two sources are supported:
+  - "code"   — regular Claude Code at ~/.claude/projects/
+  - "cowork" — Claude Cowork (desktop-agent app) at
+               ~/Library/Application Support/Claude/local-agent-mode-sessions/
+
+Both store sessions as JSONL files in the same on-disk format. The differences:
+  - Cowork has a deeper hierarchy (account/workspace/local_<session>/.claude/projects/cwd/)
+  - Cowork sessions often spawn subagents whose transcripts live in a sibling
+    subagents/ folder. Code uses the same convention but spawns them more rarely.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +19,17 @@ from pathlib import Path
 
 
 DEFAULT_CLAUDE_HOME = Path.home() / ".claude" / "projects"
+DEFAULT_COWORK_HOME = (
+    Path.home()
+    / "Library"
+    / "Application Support"
+    / "Claude"
+    / "local-agent-mode-sessions"
+)
+
+
+SOURCE_CODE = "code"
+SOURCE_COWORK = "cowork"
 
 
 @dataclass
@@ -16,12 +38,14 @@ class SessionInfo:
 
     project: str
     session_id: str
+    source: str = SOURCE_CODE  # "code" or "cowork"
     first_prompt: str = ""
     message_count: int = 0
     created: str = ""
     git_branch: str = ""
     title: str = ""
     jsonl_path: Path | None = None
+    subagent_jsonl_paths: list[Path] = field(default_factory=list)
 
 
 @dataclass
@@ -30,6 +54,7 @@ class ProjectInfo:
 
     name: str
     path: Path
+    source: str = SOURCE_CODE
     sessions: list[SessionInfo] = field(default_factory=list)
 
     @property
@@ -38,11 +63,16 @@ class ProjectInfo:
 
 
 def decode_project_name(folder_name: str) -> str:
-    """Short, table-friendly label for a project. Last two path segments only.
+    """Short, table-friendly label for a project.
 
-    `-Users-macbook-Documents-Claude` → `Documents/Claude`
-    `-Users-macbook-Documents-Claude-Projects-foo-bar` → `foo/bar`
+    Cowork session codenames keep their full hyphenated form:
+        `-sessions-noble-clever-shannon` → `noble-clever-shannon`
+    Other encoded paths get the last two segments joined with a slash:
+        `-Users-macbook-Documents-Claude` → `Documents/Claude`
+        `-Users-macbook-Documents-Claude-Projects-foo-bar` → `foo/bar`
     """
+    if folder_name.startswith("-sessions-"):
+        return folder_name[len("-sessions-"):]
     if not folder_name.startswith("-"):
         return folder_name
     parts = [p for p in folder_name.split("-") if p]
@@ -110,39 +140,92 @@ def decode_project_path(
 
 
 def get_claude_home(custom: Path | None = None) -> Path:
-    """Return the Claude projects root directory."""
+    """Return the Claude Code projects root directory."""
     return custom if custom is not None else DEFAULT_CLAUDE_HOME
 
 
-def scan_projects(claude_home: Path | None = None) -> list[ProjectInfo]:
-    """Scan ~/.claude/projects/ and return all projects with their sessions.
+def get_cowork_home(custom: Path | None = None) -> Path:
+    """Return the Claude Cowork sessions root directory."""
+    return custom if custom is not None else DEFAULT_COWORK_HOME
 
-    Raises:
-        FileNotFoundError: if claude_home does not exist.
+
+def scan_projects(
+    claude_home: Path | None = None,
+    cowork_home: Path | None = None,
+) -> list[ProjectInfo]:
+    """Discover all sessions across Claude Code and Claude Cowork.
+
+    Both roots are best-effort: if either is missing we just skip it. The
+    classic 'no Claude projects directory' error is only raised when BOTH
+    roots are missing — i.e. neither product has been used on this machine.
+
+    Returns a single list of ProjectInfo. Each project carries `source`
+    ('code' or 'cowork') and its sessions inherit that.
     """
-    root = get_claude_home(claude_home)
-    if not root.exists():
-        raise FileNotFoundError(f"Claude projects directory not found: {root}")
-    if not root.is_dir():
-        raise NotADirectoryError(f"Not a directory: {root}")
+    code_root = get_claude_home(claude_home)
+    cowork_root = get_cowork_home(cowork_home)
+    code_exists = code_root.exists() and code_root.is_dir()
+    cowork_exists = cowork_root.exists() and cowork_root.is_dir()
 
+    if not code_exists and not cowork_exists:
+        raise FileNotFoundError(
+            f"No Claude data found. Tried:\n  - {code_root}\n  - {cowork_root}"
+        )
+
+    projects: list[ProjectInfo] = []
+    if code_exists:
+        projects.extend(_scan_code_root(code_root))
+    if cowork_exists:
+        projects.extend(_scan_cowork_root(cowork_root))
+    return projects
+
+
+def _scan_code_root(root: Path) -> list[ProjectInfo]:
+    """Scan ~/.claude/projects/ — flat list of project directories."""
     projects: list[ProjectInfo] = []
     for entry in sorted(root.iterdir()):
         if not entry.is_dir():
             continue
-        project = _load_project(entry)
-        projects.append(project)
+        projects.append(_load_project(entry, source=SOURCE_CODE))
     return projects
 
 
-def _load_project(project_dir: Path) -> ProjectInfo:
+def _scan_cowork_root(root: Path) -> list[ProjectInfo]:
+    """Scan Cowork's nested account/workspace/local_session/.claude/projects/ tree.
+
+    Each session folder may contain multiple project directories (one per cwd
+    Cowork actually used). We surface each as its own ProjectInfo so the user
+    can distinguish them in `list` output.
+    """
+    projects: list[ProjectInfo] = []
+    for account in sorted(root.iterdir()):
+        if not account.is_dir() or account.name == "skills-plugin":
+            continue
+        for workspace in sorted(account.iterdir()):
+            if not workspace.is_dir():
+                continue
+            for session_folder in sorted(workspace.iterdir()):
+                if not session_folder.is_dir() or not session_folder.name.startswith(
+                    "local_"
+                ):
+                    continue
+                inner_projects = session_folder / ".claude" / "projects"
+                if not inner_projects.exists():
+                    continue
+                for cwd_dir in sorted(inner_projects.iterdir()):
+                    if not cwd_dir.is_dir():
+                        continue
+                    projects.append(_load_project(cwd_dir, source=SOURCE_COWORK))
+    return projects
+
+
+def _load_project(project_dir: Path, source: str = SOURCE_CODE) -> ProjectInfo:
     """Load a project: read sessions-index.json (if present) + scan .jsonl files.
 
-    Real Claude Code installs do NOT have sessions-index.json — for those, metadata
-    is computed directly from each .jsonl file. The index, when present, is treated
-    as a hint that's overridden by JSONL-derived values.
+    Discovers subagent transcripts that live in `<project>/<session-id>/subagents/`
+    and links them to their parent session.
     """
-    project = ProjectInfo(name=project_dir.name, path=project_dir)
+    project = ProjectInfo(name=project_dir.name, path=project_dir, source=source)
     index = _load_index(project_dir / "sessions-index.json")
     jsonl_files = {p.stem: p for p in project_dir.glob("*.jsonl")}
 
@@ -153,11 +236,13 @@ def _load_project(project_dir: Path) -> ProjectInfo:
         info = SessionInfo(
             project=project_dir.name,
             session_id=session_id,
+            source=source,
             first_prompt=str(meta.get("firstPrompt", "")),
             message_count=int(meta.get("messageCount", 0) or 0),
             created=str(meta.get("created", "")),
             git_branch=str(meta.get("gitBranch", "")),
             jsonl_path=jsonl_path,
+            subagent_jsonl_paths=_discover_subagents(project_dir, session_id),
         )
         if jsonl_path is not None:
             _enrich_from_jsonl(info, jsonl_path)
@@ -169,13 +254,27 @@ def _load_project(project_dir: Path) -> ProjectInfo:
         info = SessionInfo(
             project=project_dir.name,
             session_id=session_id,
+            source=source,
             jsonl_path=jsonl_path,
+            subagent_jsonl_paths=_discover_subagents(project_dir, session_id),
         )
         _enrich_from_jsonl(info, jsonl_path)
         project.sessions.append(info)
 
     project.sessions.sort(key=lambda s: (s.created or "", s.session_id))
     return project
+
+
+def _discover_subagents(project_dir: Path, session_id: str) -> list[Path]:
+    """Find subagent transcripts spawned during a session.
+
+    Convention (used by both Claude Code and Cowork):
+      <project_dir>/<session_id>/subagents/agent-<id>.jsonl
+    """
+    subagents_dir = project_dir / session_id / "subagents"
+    if not subagents_dir.is_dir():
+        return []
+    return sorted(p for p in subagents_dir.glob("agent-*.jsonl") if p.is_file())
 
 
 def _enrich_from_jsonl(info: SessionInfo, jsonl_path: Path) -> None:

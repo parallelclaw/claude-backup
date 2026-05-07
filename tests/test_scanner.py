@@ -70,10 +70,11 @@ def test_missing_claude_home_raises(tmp_path: Path) -> None:
 
 
 def test_claude_home_must_be_dir(tmp_path: Path) -> None:
+    """Passing a file instead of a directory is treated the same as 'no data found'."""
     f = tmp_path / "afile"
     f.write_text("x")
-    with pytest.raises(NotADirectoryError):
-        scan_projects(f)
+    with pytest.raises(FileNotFoundError):
+        scan_projects(f, cowork_home=tmp_path / "no-cowork")
 
 
 def test_find_session_locates_by_id(claude_home: Path) -> None:
@@ -90,6 +91,23 @@ def test_dataclasses_are_constructible() -> None:
     s = SessionInfo(project="p", session_id="s")
     p = ProjectInfo(name="p", path=Path("."), sessions=[s])
     assert p.sessions[0].session_id == "s"
+
+
+def test_code_session_links_subagent_files(claude_home: Path) -> None:
+    """Claude Code sessions also use subagents (not just Cowork). The scanner
+    should pick up `<session-id>/subagents/agent-*.jsonl` files."""
+    projects = scan_projects(claude_home)
+    fake = next(p for p in projects if p.name == "fake-project")
+    abc = next(s for s in fake.sessions if s.session_id == "abc-123")
+    assert len(abc.subagent_jsonl_paths) == 1
+    assert abc.subagent_jsonl_paths[0].name == "agent-acode1.jsonl"
+
+
+def test_sessions_without_subagents_have_empty_list(claude_home: Path) -> None:
+    projects = scan_projects(claude_home)
+    fake = next(p for p in projects if p.name == "fake-project")
+    def_session = next(s for s in fake.sessions if s.session_id == "def-456")
+    assert def_session.subagent_jsonl_paths == []
 
 
 def test_corrupt_index_does_not_crash(tmp_path: Path) -> None:

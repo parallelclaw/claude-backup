@@ -1,6 +1,6 @@
 # claude-backup
 
-> Export your Claude Code sessions, memory, and credentials to local Markdown files — so you keep your work even if Anthropic suspends your account.
+> Export your Claude Code **and Claude Cowork** sessions to local Markdown — so you keep your work even if Anthropic suspends your account.
 
 [Русский](README.ru.md) · English
 
@@ -11,9 +11,9 @@
 
 ## Why
 
-Claude Code stores everything in `~/.claude/`. Sessions, project context, custom instructions, memory. All of it lives on Anthropic's servers and in a local cache you don't control.
+Claude Code and Claude Cowork (the local-agent desktop app) store everything on disk: sessions, project context, custom instructions, subagent transcripts. All of it lives in folders you don't directly manage, and is tied to your Anthropic account.
 
-**If your account gets suspended, rate-limited, or you lose OAuth access — your project memory disappears.**
+**If your account gets suspended, rate-limited, or you lose OAuth access — every conversation, every plan, every subagent's research disappears.**
 
 > *"Купил подписку Claude Max 5x, прилетела блокировка. Ощущение, как-будто лучшего друга и напарника потерял..."*
 > — Real user, May 2026
@@ -45,19 +45,19 @@ pip install -e .
 ```
 
 ```bash
-# See what you have
+# See everything you have — Code AND Cowork sessions in one table
 claude-backup list
 
-# Export one session — short ID prefix is enough
+# Export one session by short ID prefix (works for either source)
 claude-backup export f7a07eec --output ~/claude-backups/
 
-# Export everything (each project gets its own subfolder)
+# Export everything from both sources (organised by source folder)
 claude-backup export-all --output ~/claude-backups/
 ```
 
 By default each export produces **two files** side-by-side:
 - `<date>--<id>.md` — clean dialogue (your prompts + Claude's text replies)
-- `<date>--<id>.full.md` — full audit copy with tool calls, tool results, and reasoning
+- `<date>--<id>.full.md` — full audit copy with tool calls, tool results, reasoning, **and any subagent transcripts**
 
 If you only want one of them, pass `--mode minimal` or `--mode full`.
 
@@ -83,16 +83,20 @@ pip install -e .
 claude-backup list
 ```
 
-Prints a compact table — project paths are decoded from the encoded form Claude Code stores them as, and the "First Prompt / Title" column shows the AI-generated session title when present, falling back to the literal first prompt:
+Prints a compact table covering **both** Claude Code and Claude Cowork sessions. The Source column tells you which one. Project paths are decoded from the encoded form they're stored as, and the "First Prompt / Title" column shows Claude's auto-generated session title when present, falling back to the literal first prompt:
 
 ```
-Project           Session   First Prompt / Title                          Msgs  Created
-────────────────  ────────  ────────────────────────────────────────────  ────  ───────────────────
-Documents/Claude  269ed03b  ты сможешь сам подключиться к апи coingecko?  236   2026-04-06T18:34:16
-Documents/Claude  0c631197  Install superpowers skill from GitHub         318   2026-04-22T06:40:06
-Documents/Claude  ad73386a  Build task extraction agent from audio files  612   2026-04-23T17:51:28
-Documents/Claude  f7a07eec  Build claude-backup CLI tool with export      296   2026-05-07T07:35:01
+Source  Project                   Session   First Prompt / Title                          Msgs  Created
+──────  ────────────────────────  ────────  ────────────────────────────────────────────  ────  ───────────────────
+Code    Documents/Claude          269ed03b  ты сможешь сам подключиться к апи coingecko?  236   2026-04-06T18:34:16
+Code    Documents/Claude          0c631197  Install superpowers skill from GitHub         318   2026-04-22T06:40:06
+Code    Documents/Claude          f7a07eec  Build claude-backup CLI tool with export      296   2026-05-07T07:35:01
+Cowork  beautiful-charming-curie  f3e13345  что ты знаешь про бизнесы связанные с арбит…  188   2026-04-06T17:27:14
+Cowork  trusting-friendly-dirac   cfa06cf5  Create slide in PDF or PowerPoint             242   2026-04-22T18:46:35
+Cowork  upbeat-epic-feynman       4724eae3  Analyze AI admin business potential           128   2026-04-20T20:01:48
 ```
+
+Cowork sessions are picked up from `~/Library/Application Support/Claude/local-agent-mode-sessions/` (the local-agent desktop app's data dir). Their `Project` column shows the friendly Cowork-generated codename like `beautiful-charming-curie`.
 
 ### Export a single session
 
@@ -127,44 +131,53 @@ claude-backup export-all --output ./backups/ --mode minimal     # only the clean
 claude-backup export-all --output ./backups/ --mode full        # only the .full.md audit copies
 ```
 
-The output mirrors the directory layout where you actually ran Claude Code, with your home prefix stripped. So if you used Claude Code in `~/Documents/Claude/` and `~/Documents/Claude/Projects/Administrator/memex-mvp/`, the backup tree looks like:
+The output is organised by source first, then by the directory layout where each session ran:
 
 ```
 backups/
-├── Documents/
-│   └── Claude/
+├── code/                                       ← regular Claude Code sessions
+│   └── Documents/Claude/
 │       ├── 2026-04-06--<id>.md
-│       ├── 2026-04-22--<id>.md
-│       └── Projects/
-│           └── Administrator/
-│               └── memex-mvp/
-│                   └── 2026-05-03--<id>.md
+│       ├── 2026-04-06--<id>.full.md
+│       └── Projects/Administrator/memex-mvp/
+│           └── 2026-05-03--<id>.md
+└── cowork/                                     ← Claude Cowork (desktop-agent) sessions
+    ├── beautiful-charming-curie/
+    │   └── 2026-04-06--<id>.md
+    ├── upbeat-epic-feynman/
+    │   └── 2026-04-20--<id>.md
+    └── session-3c6c44ca/                       ← rare: cwd was the session's own outputs dir
+        └── 2026-04-29--<id>.md
 ```
 
-Hyphens in directory names (`memex-mvp`) are recovered correctly when the original directory still exists on disk — the tool walks the filesystem to disambiguate. If the project was deleted, hyphens get split into nested folders as a best-effort fallback.
+For Code sessions, hyphens in directory names (`memex-mvp`) are recovered correctly when the original directory still exists on disk — the tool walks the filesystem to disambiguate. For Cowork sessions, the friendly codename Cowork itself generates (`beautiful-charming-curie`) is used directly.
 
-### Custom Claude root
+### Custom roots
 
-Override the default `~/.claude/projects/` location:
+Each source has its own override flag. Pass either or both — missing roots are silently skipped:
 
 ```bash
-claude-backup --claude-home /path/to/projects list
+claude-backup --claude-home /path/to/code list                            # only Code from a custom root
+claude-backup --cowork-home /path/to/cowork list                          # only Cowork from a custom root
+claude-backup --claude-home /a --cowork-home /b list                      # both, custom roots
 ```
 
 ---
 
 ## Output format
 
-Each session is written as Markdown with YAML frontmatter. When Claude Code has auto-generated a session title, it's used as the document heading and added to the frontmatter:
+Each session is written as Markdown with YAML frontmatter. When Claude Code or Cowork has auto-generated a session title, it's used as the document heading and added to the frontmatter. The `source` field tells you whether the session came from Code or Cowork:
 
 ```markdown
 ---
 project: "-Users-macbook-Documents-Claude"
 session_id: f7a07eec-e18c-4ba5-96da-b798266c7486
+source: code
 branch: HEAD
 model: claude-opus-4-7
 messages: 296
 exported_at: 2026-05-07T15:30:00Z
+subagents: 5
 title: Build claude-backup CLI tool with export
 ---
 
@@ -189,7 +202,9 @@ I'll create the utility according to the spec...
 ...
 ```
 
-The `<id>.md` file (default and `--mode minimal`) shares the same frontmatter — plus `mode: dialogue-only` — but the body contains only `## User` and `## Assistant` text turns. No `[tool_use: ...]` markers, no tool-result echoes, no extended-thinking blocks.
+The full export (`<id>.full.md`) appends a `# Subagents` section after the main timeline when the session spawned any. Each subagent is its own `## Subagent N: <id>` block with its full transcript, so you can reconstruct what the parallel agents did.
+
+The `<id>.md` file (default and `--mode minimal`) shares the same frontmatter — plus `mode: dialogue-only` — but the body contains only `## User` and `## Assistant` text turns. No `[tool_use: ...]` markers, no tool-result echoes, no extended-thinking blocks, **and no subagent transcripts** (those are pure tool plumbing from a human-reading perspective).
 
 ---
 
@@ -213,13 +228,15 @@ Claude Code generates the AI-title **once**, near the start of a session, and ne
 
 ## Behaviour
 
+- **Two sources, one CLI.** Both Claude Code (`~/.claude/projects/`) and Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`) are auto-discovered. If only one source exists on a machine, the other is silently skipped.
+- **Subagents recovered.** Both Code and Cowork spawn subagent transcripts under `<session-id>/subagents/agent-*.jsonl`. The full export pulls them in as separate sections; minimal mode drops them. The frontmatter's `subagents:` count tells you how many were attached.
 - **Reads the real Claude Code format.** Metadata (first prompt, message count, created timestamp, AI title) is computed by streaming the `.jsonl` directly. No `sessions-index.json` is required — Claude Code doesn't actually create one.
-- **AI-titles surfaced.** When Claude Code records an `ai-title` event, the title is shown in `list` output and used as the Markdown heading on export.
-- **Decoded project names.** The encoded folder names Claude Code uses (e.g. `-Users-macbook-Documents-Claude`) are decoded to readable paths (`Documents/Claude`) in the `list` table.
+- **AI-titles surfaced.** When the recording app emits an `ai-title` event, the title shows in `list` output and becomes the document heading.
+- **Decoded project names.** Encoded folder names like `-Users-macbook-Documents-Claude` are decoded to readable paths (`Documents/Claude`); Cowork codenames like `-sessions-noble-clever-shannon` keep their hyphenated form.
 - **Session ID prefixes.** Any prefix that uniquely identifies a session works — `claude-backup export f7a07eec` resolves to the full UUID. Ambiguous prefixes print all matches and exit.
 - **Encrypted thinking signatures stripped.** Extended-thinking `signature` blobs (multi-kilobyte base64) never reach the output. Visible thinking text, when present, is preserved in italics.
 - **Graceful degradation.** Empty or corrupted `.jsonl` files are skipped with a warning. The tool never crashes on bad data.
-- **Missing `~/.claude/`** exits with code 1 and a clear error message.
+- **No data found** exits with code 1 and a clear error listing both roots that were tried.
 - **Unicode-ready.** Correctly handles Russian, emoji, and special characters.
 - **Tool-aware.** In full mode, `tool_use` / `tool_result` / `image` blocks render as compact placeholders (`[tool_use: Bash]`, `[image]`) — never as raw JSON dumps.
 
@@ -234,7 +251,7 @@ pytest -v --cov=claude_backup
 
 CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Test coverage: 91%** (73/73 tests passing) — covers the real Claude Code format, the legacy spec format, edge cases (empty/corrupt JSONL, unicode, missing index), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration.
+**Test coverage: 91%** (85/85 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration across both sources.
 
 ### Project layout
 
@@ -242,19 +259,21 @@ CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml]
 claude_backup/
 ├── __init__.py
 ├── cli.py             # Click entry point
-├── scanner.py         # Discovers projects + sessions, decodes project paths
-├── parser.py          # Reads .jsonl files
-└── exporter.py        # Renders Markdown (both modes)
+├── scanner.py         # Discovers Code + Cowork sessions, decodes project paths
+├── parser.py          # Reads .jsonl files (both formats — flat and nested)
+└── exporter.py        # Renders Markdown (both modes; weaves subagents in full)
 
 tests/
-├── conftest.py        # Shared fixtures (claude_home etc.)
-├── fixtures/          # Fake project data — no real ~/.claude/ is read in tests
+├── conftest.py            # Shared fixtures + auto-isolation from real Claude data
+├── fixtures/              # Fake Claude Code project data
+├── fixtures-cowork/       # Fake Cowork hierarchy (account/workspace/local_*)
 ├── test_scanner.py
 ├── test_parser.py
 ├── test_exporter.py
 ├── test_cli.py
-├── test_minimal.py    # Dialogue-only mode + --mode CLI flag
-└── test_real_format.py  # Nested message shape, ai-title, project-path decoding
+├── test_minimal.py        # Dialogue-only mode + --mode CLI flag
+├── test_real_format.py    # Nested message shape, ai-title, project-path decoding
+└── test_cowork.py         # Cowork hierarchy + subagent rendering across sources
 ```
 
 ---

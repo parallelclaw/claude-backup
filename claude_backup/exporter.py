@@ -77,7 +77,12 @@ def render_markdown(
     now: datetime | None = None,
     minimal: bool = False,
 ) -> str:
-    """Build the full Markdown document for a session."""
+    """Build the full Markdown document for a session.
+
+    In `minimal` mode subagent transcripts are dropped entirely — they're
+    almost always tool plumbing, not human-facing dialogue. In full mode
+    subagents are appended after the main timeline as separate sections.
+    """
     now = now or datetime.now(timezone.utc)
 
     visible = [m for m in messages if is_dialogue_message(m)] if minimal else messages
@@ -86,9 +91,10 @@ def render_markdown(
     model = _first_non_empty(m.model for m in messages)
     msg_count = len(visible) if minimal else (session.message_count or len(messages))
 
-    fm_fields = {
+    fm_fields: dict = {
         "project": session.project,
         "session_id": session.session_id,
+        "source": session.source,
         "branch": branch,
         "model": model,
         "messages": msg_count,
@@ -96,6 +102,8 @@ def render_markdown(
     }
     if minimal:
         fm_fields["mode"] = "dialogue-only"
+    if session.subagent_jsonl_paths and not minimal:
+        fm_fields["subagents"] = len(session.subagent_jsonl_paths)
     if session.title:
         fm_fields["title"] = session.title
     frontmatter = _render_frontmatter(**fm_fields)
@@ -108,8 +116,27 @@ def render_markdown(
 
     body = _render_body(visible, minimal=minimal)
 
-    parts = [frontmatter, "", header, body]
-    return "\n".join(parts).rstrip() + "\n"
+    sections = [frontmatter, "", header, body]
+    if not minimal and session.subagent_jsonl_paths:
+        sections.append(_render_subagents(session.subagent_jsonl_paths))
+    return "\n".join(sections).rstrip() + "\n"
+
+
+def _render_subagents(subagent_paths: list[Path]) -> str:
+    """Render each subagent transcript as a numbered section under a divider."""
+    parts: list[str] = ["", "---", "", "# Subagents", ""]
+    for i, path in enumerate(sorted(subagent_paths), start=1):
+        agent_id = path.stem.replace("agent-", "", 1) if path.stem.startswith(
+            "agent-"
+        ) else path.stem
+        sub_messages = parse_session(path)
+        parts.append(f"## Subagent {i}: `{agent_id}`")
+        if not sub_messages:
+            parts.append("_(empty)_\n")
+            continue
+        parts.append("")
+        parts.append(_render_body(sub_messages, minimal=False))
+    return "\n".join(parts)
 
 
 def _render_frontmatter(**fields) -> str:

@@ -74,7 +74,8 @@ def test_export_all_writes_per_project_dirs(claude_home: Path, tmp_path: Path) -
     )
     assert result.exit_code == 0, result.output
 
-    fake_dir = out / "fake-project"
+    # New layout: <output>/<source>/<project>/<files>
+    fake_dir = out / "code" / "fake-project"
     assert fake_dir.is_dir()
     md_files = list(fake_dir.glob("*.md"))
     # abc-123, def-456, orphan-999, corrupt-000, empty-aaa — ghost-789 has no jsonl

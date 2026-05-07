@@ -11,43 +11,64 @@ from . import __version__
 from .exporter import export_session
 from .scanner import (
     ProjectInfo,
+    SOURCE_CODE,
+    SOURCE_COWORK,
     decode_project_name,
     decode_project_path,
     get_claude_home,
+    get_cowork_home,
     scan_projects,
 )
 
 
-@click.group(help="Export Claude Code session history to Markdown.")
+@click.group(
+    help=(
+        "Export Claude Code AND Claude Cowork session history to Markdown. "
+        "Both sources are auto-discovered; you don't need to choose."
+    )
+)
 @click.version_option(__version__, prog_name="claude-backup")
 @click.option(
     "--claude-home",
     type=click.Path(path_type=Path),
     default=None,
-    help="Override the Claude projects root (default: ~/.claude/projects).",
+    help="Override Claude Code projects root (default: ~/.claude/projects).",
+)
+@click.option(
+    "--cowork-home",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=(
+        "Override Claude Cowork sessions root "
+        "(default: ~/Library/Application Support/Claude/local-agent-mode-sessions)."
+    ),
 )
 @click.pass_context
-def main(ctx: click.Context, claude_home: Path | None) -> None:
+def main(
+    ctx: click.Context, claude_home: Path | None, cowork_home: Path | None
+) -> None:
     ctx.ensure_object(dict)
     ctx.obj["claude_home"] = claude_home
+    ctx.obj["cowork_home"] = cowork_home
 
 
 @main.command("list", help="List all discovered sessions.")
 @click.pass_context
 def list_cmd(ctx: click.Context) -> None:
-    projects = _safe_scan(ctx.obj.get("claude_home"))
+    projects = _safe_scan(ctx.obj.get("claude_home"), ctx.obj.get("cowork_home"))
     rows = _flatten_sessions(projects)
 
     if not rows:
         click.echo("No sessions found.")
         return
 
-    headers = ["Project", "Session", "First Prompt / Title", "Msgs", "Created"]
+    headers = ["Source", "Project", "Session", "First Prompt / Title", "Msgs", "Created"]
     table_rows = [
         [
-            _truncate(_project_display(r), 28),
+            "Cowork" if r.source == SOURCE_COWORK else "Code",
+            _truncate(_project_display(r), 26),
             r.session_id[:8],
-            _truncate(r.title or r.first_prompt, 50),
+            _truncate(r.title or r.first_prompt, 46),
             str(r.message_count),
             (r.created or "-")[:19],
         ]
@@ -81,7 +102,7 @@ def list_cmd(ctx: click.Context) -> None:
 def export_cmd(
     ctx: click.Context, session_id: str, output: Path, mode: str
 ) -> None:
-    projects = _safe_scan(ctx.obj.get("claude_home"))
+    projects = _safe_scan(ctx.obj.get("claude_home"), ctx.obj.get("cowork_home"))
     matches = []
     for project in projects:
         for session in project.sessions:
@@ -129,12 +150,12 @@ def export_cmd(
 )
 @click.pass_context
 def export_all_cmd(ctx: click.Context, output: Path, mode: str) -> None:
-    projects = _safe_scan(ctx.obj.get("claude_home"))
+    projects = _safe_scan(ctx.obj.get("claude_home"), ctx.obj.get("cowork_home"))
     exported = 0
     skipped = 0
 
     for project in projects:
-        project_out = output / decode_project_path(project.name)
+        project_out = output / project.source / _project_subdir(project)
         for session in project.sessions:
             if session.jsonl_path is None or not session.jsonl_path.exists():
                 click.echo(
@@ -157,19 +178,46 @@ def export_all_cmd(ctx: click.Context, output: Path, mode: str) -> None:
     click.echo(f"\nDone. Exported: {exported}, skipped: {skipped}")
 
 
-def _safe_scan(claude_home: Path | None) -> list[ProjectInfo]:
+def _project_subdir(project: ProjectInfo) -> Path:
+    """Pick the directory name for a project under <output>/<source>/.
+
+    For Code: filesystem-aware decode of the encoded cwd, e.g. 'Documents/Claude'.
+    For Cowork: strip the '-sessions-' prefix to get the friendly codename
+        (e.g. '-sessions-beautiful-charming-curie' -> 'beautiful-charming-curie').
+        Falls back to a short id if the project name is something else.
+    """
+    if project.source == SOURCE_COWORK:
+        name = project.name
+        if name.startswith("-sessions-"):
+            return Path(name[len("-sessions-"):])
+        # Cowork sessions whose cwd is the session's own outputs dir get an
+        # ugly long encoded name. Use a short stable id from the parent
+        # session folder ('local_<uuid>') if we can derive one.
+        try:
+            parent = project.path.parents[2].name  # local_<uuid>
+            if parent.startswith("local_"):
+                return Path("session-" + parent[len("local_"):][:8])
+        except IndexError:
+            pass
+        return Path(name[:32])
+    return Path(decode_project_path(project.name))
+
+
+def _safe_scan(
+    claude_home: Path | None, cowork_home: Path | None = None
+) -> list[ProjectInfo]:
     try:
-        return scan_projects(claude_home)
+        return scan_projects(claude_home, cowork_home)
     except FileNotFoundError:
-        root = get_claude_home(claude_home)
+        code_root = get_claude_home(claude_home)
+        cw_root = get_cowork_home(cowork_home)
         click.echo(
-            f"Error: Claude projects directory not found at {root}.\n"
-            f"Have you used Claude Code on this machine?",
+            "Error: Claude data not found. Tried:\n"
+            f"  - {code_root}\n"
+            f"  - {cw_root}\n"
+            "Have you used Claude Code or Cowork on this machine?",
             err=True,
         )
-        sys.exit(1)
-    except NotADirectoryError as e:
-        click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
 

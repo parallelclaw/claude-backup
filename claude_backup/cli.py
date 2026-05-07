@@ -8,7 +8,14 @@ from pathlib import Path
 import click
 
 from . import __version__
-from .exporter import export_session, render_handoff
+from .exporter import (
+    export_session,
+    render_handoff,
+    render_markdown,
+    render_rescue_handoff_prompt,
+    render_rescue_index,
+    render_rescue_readme,
+)
 from .parser import parse_session
 from .scanner import (
     ProjectInfo,
@@ -236,6 +243,81 @@ def export_all_cmd(ctx: click.Context, output: Path, mode: str) -> None:
                 skipped += 1
 
     click.echo(f"\nDone. Exported: {exported}, skipped: {skipped}")
+
+
+@main.command(
+    "rescue",
+    help=(
+        "Build a portable bundle that lets you continue ALL your Claude work "
+        "in a different AI agent. Use case: account suspended → your local "
+        "files survived (Anthropic only revokes API access) → hand them to "
+        "ChatGPT, Cursor, OpenClaw, or any other agent and pick up."
+    ),
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Where to write the bundle (default: ./claude-rescue-<today>/).",
+)
+@click.option(
+    "--lang",
+    type=click.Choice(["auto", "en", "ru"], case_sensitive=False),
+    default="auto",
+    show_default=True,
+    help="Wrapper language. 'auto' picks Russian if most sessions are Russian.",
+)
+@click.pass_context
+def rescue_cmd(ctx: click.Context, output: Path | None, lang: str) -> None:
+    from datetime import date as _date
+
+    projects = _safe_scan(ctx.obj.get("claude_home"), ctx.obj.get("cowork_home"))
+    sessions = [
+        s
+        for project in projects
+        for s in project.sessions
+        if s.jsonl_path is not None and s.jsonl_path.exists()
+    ]
+    if not sessions:
+        click.echo("No exportable sessions found.", err=True)
+        sys.exit(1)
+
+    if output is None:
+        output = Path(f"./claude-rescue-{_date.today().isoformat()}")
+    output.mkdir(parents=True, exist_ok=True)
+    sessions_dir = output / "sessions"
+    sessions_dir.mkdir(exist_ok=True)
+
+    # Render bundle metadata files
+    readme_text = render_rescue_readme(sessions, lang=lang)
+    (output / "README.md").write_text(readme_text, encoding="utf-8")
+
+    handoff_text = render_rescue_handoff_prompt(sessions, lang=lang)
+    (output / "HANDOFF_PROMPT.md").write_text(handoff_text, encoding="utf-8")
+
+    resolved_lang = (
+        lang if lang != "auto" else ("ru" if "продолжаешь" in handoff_text else "en")
+    )
+    index_text = render_rescue_index(sessions, lang=resolved_lang)
+    (output / "INDEX.md").write_text(index_text, encoding="utf-8")
+
+    # Render each session as dialogue-only markdown
+    written = 0
+    for s in sessions:
+        from .exporter import _rescue_session_filename  # internal helper
+
+        messages = parse_session(s.jsonl_path)
+        md = render_markdown(s, messages, minimal=True)
+        out_path = sessions_dir / _rescue_session_filename(s)
+        out_path.write_text(md, encoding="utf-8")
+        written += 1
+
+    click.echo(f"\n✅ Rescue bundle ready: {output}")
+    click.echo(f"   {written} sessions, README + INDEX + HANDOFF_PROMPT")
+    click.echo(
+        f"\n💡 Next: open {output}/HANDOFF_PROMPT.md, copy contents, paste into your new agent."
+    )
 
 
 def _project_subdir(project: ProjectInfo) -> Path:

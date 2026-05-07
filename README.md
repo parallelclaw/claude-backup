@@ -34,6 +34,27 @@ Users who paid through non-standard channels or used VPNs were hit hardest. Appe
 
 **claude-backup doesn't prevent bans. It prevents amnesia.**
 
+> **The good news:** Anthropic only revokes API access. Your local files in `~/.claude/projects/` and `~/Library/Application Support/Claude/` survive untouched on your disk — they're yours, not theirs ([source](https://blog.laozhang.ai/en/posts/claude-code-max-recharge-account-banned)). One command (`claude-backup rescue`) packages everything into a portable bundle you can hand to ChatGPT, Cursor, OpenClaw, or any other AI agent — and pick up exactly where you left off.
+
+---
+
+## 🆘 If your account just got banned — read this first
+
+Run **one command**:
+
+```bash
+claude-backup rescue
+```
+
+You'll get a `claude-rescue-<today>/` folder containing:
+
+- `README.md` — what this bundle is
+- **`HANDOFF_PROMPT.md`** — copy this into your new AI agent (Claude.ai personal account, ChatGPT, Cursor, OpenClaw, a Chinese hosted model — anything)
+- `INDEX.md` — every session you ever had, listed by date
+- `sessions/` — clean Markdown transcript of each session
+
+The new agent reads the bundle, takes over from Claude, and continues your work with full context. Lazy walkthrough is in [QUICKSTART.md § rescue](./QUICKSTART.md#step-8--rescue-bundle-the-banned-user-escape-hatch).
+
 ---
 
 ## Quick Start
@@ -57,6 +78,9 @@ claude-backup export-all --output ~/claude-backups/
 # Continue a session in a DIFFERENT agent — paste-ready prompt to your clipboard
 claude-backup handoff f7a07eec | pbcopy        # macOS
 claude-backup handoff f7a07eec | xclip -selection clipboard   # Linux
+
+# Rescue: package EVERYTHING for a new agent (account-banned escape hatch)
+claude-backup rescue
 ```
 
 By default each export produces **two files** side-by-side:
@@ -196,6 +220,37 @@ Workflow:
 
 A 200-message session typically packs into 80–200 KB of text — fine for context windows of any modern hosted assistant.
 
+### Rescue bundle (`rescue`) — the banned-user escape hatch
+
+`handoff` is for one session. `rescue` is for **all of them at once** — built specifically for the situation where Anthropic suspends your account and you need to keep working. Your local files survive (Anthropic only revokes API access, not your disk), so you can package the lot and hand it to a different AI provider.
+
+```bash
+claude-backup rescue                                    # writes ./claude-rescue-<today>/
+claude-backup rescue --output ~/my-rescue/              # custom location
+claude-backup rescue --lang en                          # force English wrapper
+```
+
+The bundle is self-contained:
+
+```
+claude-rescue-2026-05-07/
+├── README.md             # what this bundle is, how to use it
+├── HANDOFF_PROMPT.md     # ← THE prompt to paste into your new AI agent
+├── INDEX.md              # one line per session, chronological
+└── sessions/             # full clean-dialogue transcript of every session
+    ├── 2026-04-06--269ed03b.md
+    ├── 2026-04-22--0c631197.md
+    └── ...
+```
+
+**Two ways to use it:**
+
+1. **Lazy (any chat agent — Claude.ai, ChatGPT, Cursor, etc.):** Open `HANDOFF_PROMPT.md`, copy contents, paste into a fresh conversation. The agent acknowledges. When you reference past work, paste the relevant `sessions/<file>.md`.
+
+2. **Thorough (agents with file uploads — Cursor, Claude Projects, ChatGPT Files):** Drop the entire folder as project files, paste `HANDOFF_PROMPT.md` content as the first message. Now the new agent has the full searchable archive.
+
+The wrapper auto-detects the dominant language: if at least half your sessions have Cyrillic titles, the prompt comes out in Russian; otherwise English. Override with `--lang`.
+
 ---
 
 ## Output format
@@ -264,6 +319,7 @@ Claude Code generates the AI-title **once**, near the start of a session, and ne
 
 - **Two sources, one CLI.** Both Claude Code (`~/.claude/projects/`) and Claude Cowork (`~/Library/Application Support/Claude/local-agent-mode-sessions/`) are auto-discovered. If only one source exists on a machine, the other is silently skipped.
 - **Portable handoff.** The `handoff` command produces a paste-ready prompt that lets you continue any session in a different AI agent (Claude.ai, ChatGPT, Cursor, etc.). The wrapper auto-detects Russian/English from the session.
+- **Account-rescue bundle.** `rescue` packages every session you've ever had into a self-contained folder with a master meta-prompt — designed for the case where Anthropic suspends your account and you need to keep working in a different agent. Your local files survive bans (Anthropic only revokes API access).
 - **Subagents recovered.** Both Code and Cowork spawn subagent transcripts under `<session-id>/subagents/agent-*.jsonl`. The full export pulls them in as separate sections; minimal mode drops them. The frontmatter's `subagents:` count tells you how many were attached.
 - **Reads the real Claude Code format.** Metadata (first prompt, message count, created timestamp, AI title) is computed by streaming the `.jsonl` directly. No `sessions-index.json` is required — Claude Code doesn't actually create one.
 - **AI-titles surfaced.** When the recording app emits an `ai-title` event, the title shows in `list` output and becomes the document heading.
@@ -286,7 +342,7 @@ pytest -v --cov=claude_backup
 
 CI runs on Python 3.9, 3.10, 3.11, and 3.12 — see [.github/workflows/test.yml](.github/workflows/test.yml).
 
-**Test coverage: 90%** (95/95 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration across both sources.
+**Test coverage: 91%** (106/106 tests passing) — covers the real Claude Code format, the legacy spec format, the Cowork nested hierarchy, subagent discovery and rendering, edge cases (empty/corrupt JSONL, unicode, missing roots), `--mode` selection (both / minimal / full), the FS-aware project-path decoder, and CLI integration across both sources.
 
 ### Project layout
 
@@ -309,7 +365,8 @@ tests/
 ├── test_minimal.py        # Dialogue-only mode + --mode CLI flag
 ├── test_real_format.py    # Nested message shape, ai-title, project-path decoding
 ├── test_cowork.py         # Cowork hierarchy + subagent rendering across sources
-└── test_handoff.py        # Paste-ready prompt for continuing in another agent
+├── test_handoff.py        # Paste-ready prompt for continuing in another agent
+└── test_rescue.py         # Bundled handoff: rescue all sessions for a new provider
 ```
 
 ---

@@ -177,6 +177,44 @@ You now have a complete Markdown archive of every Claude conversation across bot
 
 ---
 
+## Step 8 — Rescue bundle: the banned-user escape hatch
+
+If your Anthropic account ever gets suspended, **your local files survive** — Anthropic only revokes API access. The `rescue` command packages every session you've ever had into a self-contained folder you can hand to any other AI agent (your personal Claude.ai account, ChatGPT, Cursor, OpenClaw, even a Chinese hosted model) to keep working with full context.
+
+```bash
+claude-backup rescue
+# → writes ./claude-rescue-2026-05-07/ with everything you need
+```
+
+What's inside:
+
+```
+claude-rescue-2026-05-07/
+├── README.md             # what this bundle is, how to use it
+├── HANDOFF_PROMPT.md     # ← THE prompt you paste into the new agent
+├── INDEX.md              # one line per session, chronological
+└── sessions/             # full clean transcripts, one .md per session
+    └── ...
+```
+
+**The lazy way (works in any chat agent):**
+
+1. Open `claude-rescue-2026-05-07/HANDOFF_PROMPT.md`
+2. Copy its full contents
+3. Open a new conversation in your other AI agent (Claude.ai, ChatGPT, Cursor, etc.)
+4. Paste, send. The agent reads the index, acknowledges, asks for specifics when needed.
+5. Continue typing. When you reference past work, paste the relevant `sessions/<file>.md`.
+
+**The thorough way (for agents that take file uploads):**
+
+1. Drop the entire `claude-rescue-<date>/` folder as project files (Cursor, Claude Projects, ChatGPT with Files all support this).
+2. First message: paste contents of `HANDOFF_PROMPT.md`.
+3. The agent now has the full archive, indexed and searchable.
+
+The bundle's wrapper text auto-detects whether your sessions are mostly Russian or English. Force one with `--lang en` or `--lang ru`.
+
+---
+
 ## Common questions
 
 **Where does it look for my conversations?**

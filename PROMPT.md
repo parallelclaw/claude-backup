@@ -32,7 +32,9 @@ The full path:
 6. Pick an interesting session with me and have me run `claude-backup export <8-char-prefix> --output ./backups/`. By default this writes two files: `<id>.md` (clean dialogue, only my prompts and Claude's text replies) and `<id>.full.md` (everything — tool calls, tool results, AND any subagent transcripts the session spawned). Explain when to use each.
 7. Have me `open ./backups/<filename>.md` (macOS) or `xdg-open` (Linux) to view the result. Ask what I think.
 8. If I want a full backup of everything, have me run `claude-backup export-all --output ~/claude-backups`. Explain that the output is split first by source — `code/` and `cowork/` subfolders — and inside each, organised by project (Code mirrors my real working dirs, Cowork uses the friendly codename like `beautiful-charming-curie` that Cowork itself generates).
-9. Mention one more useful command for later: `claude-backup handoff <prefix> | pbcopy` (macOS) or `| xclip -selection clipboard` (Linux). It produces a paste-ready prompt I can drop into Claude.ai, ChatGPT, Cursor, or any other AI assistant to continue the same conversation there. Don't make me try it now unless I ask — just plant the seed so I know it exists.
+9. Mention TWO more useful commands for later — don't make me try them now unless I ask, just plant seeds:
+   - `claude-backup handoff <prefix> | pbcopy` — paste-ready prompt to continue ONE session in another AI agent (Claude.ai, ChatGPT, Cursor).
+   - `claude-backup rescue` — packages ALL my sessions into a portable bundle (`claude-rescue-<date>/`) for the case where my Anthropic account gets suspended. Local files survive bans because they're on my disk, not Anthropic's. The bundle has a `HANDOFF_PROMPT.md` I can paste into any new agent (including non-Anthropic models like ChatGPT or Chinese hosted ones) to take over with full context.
 
 If a command errors: help me debug, don't just dump a fix. Common issues —
 - "Claude data not found" → I haven't used either Claude Code or Cowork on this machine yet
@@ -66,7 +68,9 @@ Start with step 1.
 6. Выбери со мной одну сессию и вели мне `claude-backup export <8-символьный-префикс> --output ./backups/`. По умолчанию создаются два файла: `<id>.md` (чистый диалог — только мои промпты и текстовые ответы Claude) и `<id>.full.md` (всё: tool-вызовы, tool-результаты И transcripts subagent'ов которые сессия порождала). Объясни когда использовать каждый.
 7. `open ./backups/<filename>.md` (macOS) или `xdg-open` (Linux) — посмотреть результат. Спроси что я думаю.
 8. Если хочу выгрузить всё — `claude-backup export-all --output ~/claude-backups`. Объясни что вывод сначала разделён по источнику — подпапки `code/` и `cowork/`, — а внутри каждой организован по проекту (Code зеркалит реальные рабочие директории, Cowork использует дружелюбный кодноим типа `beautiful-charming-curie` который Cowork сам генерирует).
-9. Упомяни ещё одну полезную команду на будущее: `claude-backup handoff <prefix> | pbcopy` (macOS) или `| xclip -selection clipboard` (Linux). Она создаёт paste-ready промпт, который можно вставить в Claude.ai, ChatGPT, Cursor или любого другого AI-ассистента, чтобы продолжить тот же разговор там. Не заставляй пробовать сейчас если я не попрошу — просто посади семечко чтобы я знал что это есть.
+9. Упомяни ДВЕ полезные команды на будущее — не заставляй пробовать сейчас, просто посади семечки:
+   - `claude-backup handoff <prefix> | pbcopy` — paste-ready промпт, чтобы продолжить ОДНУ сессию в другом AI-агенте (Claude.ai, ChatGPT, Cursor).
+   - `claude-backup rescue` — упаковывает ВСЕ мои сессии в портативный пакет (`claude-rescue-<дата>/`) специально под случай, если Anthropic заблокирует аккаунт. Локальные файлы переживают бан потому что они на моём диске, а не на серверах Anthropic. В пакете есть `HANDOFF_PROMPT.md`, который можно вставить в любого нового агента (включая не-Anthropic модели вроде ChatGPT или китайских хостед-моделей), и он принимает с полным контекстом.
 
 Если команда выдаёт ошибку — помоги отладить, не вываливай готовый фикс. Частые проблемы:
 - "Claude data not found" → я ещё не пользовался ни Claude Code, ни Cowork на этой машине

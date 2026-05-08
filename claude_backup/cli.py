@@ -396,6 +396,18 @@ def feed_memex_cmd(ctx: click.Context, inbox: Path, dry_run: bool) -> None:
                 )
             else:
                 with target.open("w", encoding="utf-8") as f:
+                    # Memex looks for an `ai-title` record to give the chat
+                    # a human-readable name in list_conversations / search.
+                    # Without this it falls back to the first user message
+                    # (or the file stem if there is none).
+                    if session.title:
+                        f.write(
+                            json.dumps(
+                                {"type": "ai-title", "aiTitle": session.title},
+                                ensure_ascii=False,
+                            )
+                            + "\n"
+                        )
                     for line in lines:
                         f.write(json.dumps(line, ensure_ascii=False) + "\n")
                 written += 1

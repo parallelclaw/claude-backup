@@ -223,7 +223,15 @@ Workflow:
 
 Сессия из 200 сообщений обычно укладывается в 80–200 КБ текста — нормально для context window любого современного хостед-ассистента.
 
-### Живая MCP-память — `feed-memex`
+### Живая MCP-память — `feed-memex` (legacy)
+
+> **Важно:** если ваша единственная цель — кормить [memex-mvp](https://github.com/parallelclaw/memex-mvp), claude-backup вам не нужен. Memex теперь самодостаточен:
+>
+> ```bash
+> npx memex-sync scan-claude   # импортит ту же Code + Cowork историю, без Python
+> ```
+>
+> Используйте `claude-backup feed-memex` только если у вас уже стоит claude-backup для Markdown-экспорта и хочется чтобы один tool делал и то и другое.
 
 Если у вас установлен [memex-mvp](https://github.com/parallelclaw/memex-mvp) (отдельный локальный MCP-сервер), команда `claude-backup feed-memex` пишет clean dialogue-only JSONL каждой сессии в memex'овский inbox (`~/.memex/inbox/`). Memex подхватывает через `chokidar`, индексирует в SQLite + FTS5, и даёт доступ через MCP **любому совместимому AI-агенту** — Cursor, Cline, Claude Code, Continue, Zed.
 
@@ -232,7 +240,7 @@ claude-backup feed-memex            # записать все сессии в ~/
 claude-backup feed-memex --dry-run  # показать что будет записано
 ```
 
-Вывод идемпотентный — запускайте сколько угодно, memex дедуплицирует по стабильным msg_id. После настройки ваш Cursor-агент может вызвать `memex_search("миграция о которой мы говорили в апреле")` и получить реальные результаты из прошлых Code/Cowork разговоров. **Никакой пасты.** Никаких переключений контекста.
+Вывод идемпотентный и **байт-совместимый с `memex-sync scan-claude`** — можно переключаться между tools без переимпорта. Memex дедуплицирует по стабильным msg_id.
 
 Конвенция имён: `code-<8char>.jsonl` для Claude Code сессий, `cowork-<8char>.jsonl` для Cowork. Memex различает их по префиксу и помечает разными `source`-значениями — можно фильтровать `memex_search` по источнику.
 
